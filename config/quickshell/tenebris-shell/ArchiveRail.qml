@@ -166,7 +166,6 @@ Rectangle {
                 { asset: "rail_icon_archive.png", label: "Files", command: "omarchy launch nautilus", active: false },
                 { asset: "rail_icon_quill.png", label: "Editor", command: "omarchy launch editor '$HOME/Projects'", active: false },
                 { asset: "rail_icon_sigil.png", label: "Browser", command: "omarchy launch browser", active: false },
-                { asset: "rail_icon_lyre.png", label: "Spotify", command: "omarchy launch or focus tui --app-id=tenebris-spotify-tui spt", active: false },
                 { asset: "rail_icon_image.png", label: "Images", command: "uwsm app -- nautilus --new-window \"$(xdg-user-dir PICTURES)\"", active: false },
                 { asset: "rail_icon_rune.png", label: "Rune", command: "omarchy launch tui btop", active: false },
                 { asset: "rail_icon_settings.png", label: "Settings", command: "omarchy menu toggle", active: false }
@@ -195,7 +194,6 @@ Rectangle {
         ArchiveButton { glyph: "󰉋"; label: "Archive"; onInvoked: root.commandRequested("omarchy launch nautilus") }
         ArchiveButton { glyph: "󰨞"; label: "Editor"; onInvoked: root.commandRequested("omarchy launch editor '$HOME/Projects'") }
         ArchiveButton { glyph: "󰖟"; label: "Network"; onInvoked: root.commandRequested("omarchy launch browser") }
-        ArchiveButton { glyph: "󰎆"; label: "Spotify"; onInvoked: root.commandRequested("omarchy launch or focus tui --app-id=tenebris-spotify-tui spt") }
         ArchiveButton { glyph: "󰄫"; label: "Vitals"; onInvoked: root.commandRequested("omarchy launch tui btop") }
         ArchiveButton { glyph: "󰒓"; label: "Config"; onInvoked: root.commandRequested("omarchy menu toggle") }
     }

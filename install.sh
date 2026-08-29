@@ -7,7 +7,6 @@ display_output_request=""
 music_clients_request="ask"
 want_ymc=false
 want_cliamp=false
-want_spotify_tui=false
 
 usage() {
     cat <<'EOF'
@@ -21,9 +20,9 @@ the connected displays' supported resolution and refresh-rate combinations.
   --skip-packages       Do not install packages; fail if a dependency is missing.
   --display-mode MODE   Use `keep` or a supported mode such as 2560x1600@240.00.
   --display-output NAME Target output for --display-mode; defaults to focused.
-  --music-clients LIST  Comma-separated ymc,cliamp,spotify-tui; or use
-                        recommended, all, or none. Interactive installs ask
-                        about each client separately.
+  --music-clients LIST  Comma-separated ymc,cliamp; or use recommended, all,
+                        or none. Interactive installs ask about each client
+                        separately.
 EOF
 }
 
@@ -155,13 +154,6 @@ choose_music_clients() {
         else
             confirm_choice '  Install cliamp? [Y/n] (recommended) ' yes && want_cliamp=true
         fi
-        if command -v spt >/dev/null; then
-            confirm_choice '  Use the installed spotify-tui integration? [y/N] ' no \
-                && want_spotify_tui=true
-        else
-            confirm_choice '  Install spotify-tui? [y/N] (optional) ' no \
-                && want_spotify_tui=true
-        fi
         return
     fi
 
@@ -176,7 +168,6 @@ choose_music_clients() {
         all)
             want_ymc=true
             want_cliamp=true
-            want_spotify_tui=true
             return
             ;;
     esac
@@ -186,7 +177,6 @@ choose_music_clients() {
         case "$entry" in
             ymc) want_ymc=true ;;
             cliamp) want_cliamp=true ;;
-            spotify-tui|spotify|spt) want_spotify_tui=true ;;
             *)
                 printf 'Unknown music client: %s\n' "$entry" >&2
                 return 1
@@ -211,7 +201,6 @@ theme_dir="$HOME/.config/omarchy/themes/tenebris"
 menu_plugin_dir="$HOME/.config/omarchy/plugins/tenebris.menu"
 gtk4_file="$HOME/.config/gtk-4.0/gtk.css"
 gtk3_file="$HOME/.config/gtk-3.0/gtk.css"
-spotify_tui_config="$HOME/.config/spotify-tui/config.yml"
 cliamp_theme_file="$HOME/.config/cliamp/themes/tenebris.toml"
 ymc_unit_file="$HOME/.config/systemd/user/tenebris-ymc.service"
 cliamp_unit_file="$HOME/.config/systemd/user/tenebris-cliamp.service"
@@ -219,7 +208,6 @@ bar_off_file="$HOME/.local/state/omarchy/toggles/bar-off"
 title_font_file="$HOME/.local/share/fonts/tenebris/ArgFlahm.ttf"
 ymc_binary_file="$HOME/.local/bin/youtube-music-cli"
 ymc_alias_file="$HOME/.local/bin/ymc"
-spt_binary_file="$HOME/.local/bin/spt"
 cliamp_preinstalled=false
 command -v cliamp >/dev/null && cliamp_preinstalled=true
 
@@ -241,7 +229,7 @@ fi
 required_commands=(
     qs cava flock jq hyprctl uwsm omarchy omarchy-shell python3 playerctl
     tmux xdg-terminal-exec systemctl git xdg-user-dir btop nautilus curl
-    tar sha256sum fc-scan fc-cache
+    sha256sum fc-scan fc-cache
 )
 missing=()
 for command_name in "${required_commands[@]}"; do
@@ -420,7 +408,6 @@ record_service_state() {
 record_path shell "$shell_dir"
 record_path theme "$theme_dir"
 record_path menu-plugin "$menu_plugin_dir"
-record_path spotify-tui "$spotify_tui_config"
 record_path cliamp-theme "$cliamp_theme_file"
 record_path ymc-unit "$ymc_unit_file"
 record_path cliamp-unit "$cliamp_unit_file"
@@ -484,39 +471,6 @@ install_ymc_client() {
     printf 'Installed YMC from its verified GitHub release.\n'
 }
 
-install_spotify_tui_client() {
-    local temporary_dir expected_digest downloaded_digest
-    command -v spt >/dev/null && return
-    [[ "$(uname -m)" == x86_64 ]] || {
-        printf 'spotify-tui currently provides a TENEBRIS-supported binary only for x86_64 Linux.\n' >&2
-        return 1
-    }
-
-    temporary_dir="$(mktemp -d)"
-    curl --proto '=https' --tlsv1.2 -fL --retry 3 \
-        https://github.com/Rigellute/spotify-tui/releases/latest/download/spotify-tui-linux.tar.gz \
-        -o "$temporary_dir/spotify-tui-linux.tar.gz"
-    curl --proto '=https' --tlsv1.2 -fL --retry 3 \
-        https://github.com/Rigellute/spotify-tui/releases/latest/download/spotify-tui-linux.sha256 \
-        -o "$temporary_dir/spotify-tui-linux.sha256"
-    expected_digest="$(awk 'NF { print $1; exit }' "$temporary_dir/spotify-tui-linux.sha256")"
-    downloaded_digest="$(sha256sum "$temporary_dir/spotify-tui-linux.tar.gz" | awk '{print $1}')"
-    [[ -n "$expected_digest" && "$downloaded_digest" == "$expected_digest" ]] || {
-        printf 'spotify-tui release checksum verification failed.\n' >&2
-        return 1
-    }
-    tar -xzf "$temporary_dir/spotify-tui-linux.tar.gz" -C "$temporary_dir" spt
-    install -Dm755 "$temporary_dir/spt" "$spt_binary_file"
-    hash -r
-    spt --version >/dev/null 2>&1 || {
-        printf 'spotify-tui was installed but failed its startup check.\n' >&2
-        return 1
-    }
-    touch "$active_state/installed-spotify-tui-client"
-    rm -r -- "$temporary_dir"
-    printf 'Installed spotify-tui from its verified GitHub release.\n'
-}
-
 install_title_font
 if [[ "$want_ymc" == true ]]; then
     install_ymc_client
@@ -524,10 +478,6 @@ fi
 if [[ "$want_cliamp" == true && "$cliamp_preinstalled" == false ]]; then
     touch "$active_state/installed-cliamp-client"
 fi
-if [[ "$want_spotify_tui" == true ]]; then
-    install_spotify_tui_client
-fi
-
 if [[ ! -f "$active_state/previous-theme" ]]; then
     previous_theme="$(omarchy theme current 2>/dev/null || printf 'Tokyo Night')"
     printf '%s\n' "$previous_theme" >"$active_state/previous-theme"
@@ -625,14 +575,6 @@ if [[ -n "$settings_cache" ]]; then
     rm -f "$settings_cache"
 fi
 chmod 755 "$shell_dir"/*.py "$shell_dir"/*.sh
-
-if [[ "$want_spotify_tui" == true ]] && command -v spt >/dev/null \
-        && [[ "$(spt --version 2>/dev/null || true)" == spotify-tui\ * ]]; then
-    deploy_file "$repo_dir/config/spotify-tui/config.yml" "$spotify_tui_config" spotify-tui
-    touch "$active_state/managed-spotify-tui"
-else
-    printf 'Optional: spotify-tui not found; Spotify dock integration is inactive.\n'
-fi
 
 if [[ "$want_ymc" == true ]] && command -v ymc >/dev/null; then
     deploy_file "$repo_dir/systemd/user/tenebris-ymc.service" "$ymc_unit_file" ymc-unit

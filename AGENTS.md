@@ -55,12 +55,10 @@ cd omarchy-tenebris-dm
   default. The installer may write a reversible monitor block only after the
   user explicitly selects a supported resolution/refresh profile; it must
   preserve the output's current scale, position and transform.
-- Treat `ymc`, `cliamp`, `spt`, `code` and `codex` as optional.
-- Ask about YMC, cliamp and spotify-tui separately. Interactive defaults are
-  yes for YMC/cliamp and no for spotify-tui; non-interactive installs require
-  an explicit `--music-clients` value.
-- Do not overwrite player credentials. `spotify-tui/client.yml` is never part
-  of this repository.
+- Treat `ymc`, `cliamp`, `code` and `codex` as optional.
+- Ask about YMC and cliamp separately. Interactive defaults are yes for both;
+  non-interactive installs require an explicit `--music-clients` value.
+- Do not overwrite player credentials.
 - Install the bundled Argor font only after verifying its family, preserve its
   author notice, and restore the previous target on uninstall.
 - Uninstall must restore the previous theme, menu, stock-bar flag, files and

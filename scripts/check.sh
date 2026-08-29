@@ -95,7 +95,7 @@ for (section, option), expected in cava_contract.items():
 installer = (root / "install.sh").read_text(encoding="utf-8")
 array_contract = {
     "core_packages": {"cava", "curl"},
-    "required_commands": {"cava", "curl", "tar", "sha256sum", "fc-scan", "fc-cache"},
+    "required_commands": {"cava", "curl", "sha256sum", "fc-scan", "fc-cache"},
 }
 for array_name, required_entries in array_contract.items():
     match = re.search(rf"{array_name}=\((.*?)\)", installer, re.DOTALL)
@@ -106,12 +106,12 @@ for array_name, required_entries in array_contract.items():
             f"Installer array {array_name} is missing: {', '.join(missing_entries)}"
         )
 
-for client in ("YMC", "cliamp", "spotify-tui"):
+for client in ("YMC", "cliamp"):
     if client not in installer:
         raise SystemExit(f"Installer does not expose the {client} client choice")
 
 uninstaller = (root / "uninstall.sh").read_text(encoding="utf-8")
-for client in ("YMC", "cliamp", "spotify-tui"):
+for client in ("YMC", "cliamp"):
     if f"Remove {client}?" not in uninstaller:
         raise SystemExit(f"Uninstaller does not ask separately about {client}")
 

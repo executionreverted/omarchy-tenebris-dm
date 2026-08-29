@@ -91,13 +91,13 @@ refresh-rate combinations. **Keep current settings** is the default. The
 selected profile preserves that output's existing scale, position and
 transform, and is removed again by `./uninstall.sh`.
 
-The installer then asks about each music client separately. YMC and cliamp are
-recommended; spotify-tui is optional. No client is installed without its own
-answer. Scripted installs can make the same choice explicitly:
+The installer then asks about YMC and cliamp separately; both are recommended.
+No client is installed without its own answer. Scripted installs can make the
+same choice explicitly:
 
 ```bash
 ./install.sh --music-clients recommended
-./install.sh --music-clients ymc,cliamp,spotify-tui
+./install.sh --music-clients ymc,cliamp
 ```
 
 For a scripted installation, the same choice can be supplied explicitly:
@@ -126,8 +126,6 @@ Backups and restore state live in `~/.local/state/tenebris-omarchy/`.
 
 TENEBRIS can install and theme these applications when selected:
 
-- [`spotify-tui`](https://github.com/Rigellute/spotify-tui) (`spt`) for the
-  Spotify dock entry
 - [`youtube-music-cli`](https://github.com/involvex/youtube-music-cli) (`ymc`)
   for the native music overlay
 - `cliamp` for the alternate persistent terminal player
@@ -135,9 +133,9 @@ TENEBRIS can install and theme these applications when selected:
 
 Without them, the desktop remains functional and the related actions stay
 inactive. YMC is installed from its checksum-verified official GitHub release
-with `mpv` and `yt-dlp`; cliamp comes from Omarchy's package repository;
-spotify-tui uses its checksum-verified official release. TENEBRIS never logs
-into an account for you and does not overwrite client credentials.
+with `mpv` and `yt-dlp`; cliamp comes from Omarchy's package repository.
+TENEBRIS never logs into an account for you and does not overwrite client
+credentials.
 
 The **Argor Flahm Scaqh** title font is bundled and installed automatically, so
 the dashboard uses its intended typography immediately after installation.
@@ -176,9 +174,9 @@ motion `2.0`, 30 FPS at `0.75×` render scale, a 90-second idle delay and a
 ```
 
 The uninstaller restores the previous theme, menu, stock-bar state, GTK blocks,
-player configuration and service state. It asks separately whether YMC,
-cliamp and spotify-tui should also be removed when detected; the default is to
-keep each one. Music login, library and credential data are always preserved.
+player configuration and service state. It asks separately whether YMC and
+cliamp should also be removed when detected; the default is to keep each one.
+Music login, library and credential data are always preserved.
 Removed TENEBRIS files and local player binaries are retained in the state
 directory for recovery. Core runtime packages are intentionally kept.
 

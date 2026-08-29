@@ -4,7 +4,6 @@ set -Eeuo pipefail
 remove_music_clients_request="ask"
 remove_ymc=false
 remove_cliamp=false
-remove_spotify_tui=false
 
 usage() {
     cat <<'EOF'
@@ -13,8 +12,8 @@ Usage: ./uninstall.sh [--remove-music-clients LIST]
 Restores the desktop state saved by TENEBRIS. Interactive uninstalls ask about
 each detected music client separately.
 
-  --remove-music-clients LIST  Comma-separated ymc,cliamp,spotify-tui; or use
-                               all or none. Login and library data are kept.
+  --remove-music-clients LIST  Comma-separated ymc,cliamp; or use all or none.
+                               Login and library data are kept.
 EOF
 }
 
@@ -49,7 +48,6 @@ retired_dir="$state_root/retired/$stamp"
 shell_dir="$HOME/.config/quickshell/tenebris-shell"
 theme_dir="$HOME/.config/omarchy/themes/tenebris"
 menu_plugin_dir="$HOME/.config/omarchy/plugins/tenebris.menu"
-spotify_tui_config="$HOME/.config/spotify-tui/config.yml"
 cliamp_theme_file="$HOME/.config/cliamp/themes/tenebris.toml"
 ymc_unit_file="$HOME/.config/systemd/user/tenebris-ymc.service"
 cliamp_unit_file="$HOME/.config/systemd/user/tenebris-cliamp.service"
@@ -90,9 +88,6 @@ choose_music_removals() {
         if command -v cliamp >/dev/null; then
             confirm_removal '  Remove cliamp? [y/N] ' && remove_cliamp=true
         fi
-        if command -v spt >/dev/null || [[ -e "$HOME/.local/bin/spt" ]]; then
-            confirm_removal '  Remove spotify-tui? [y/N] ' && remove_spotify_tui=true
-        fi
         return
     fi
 
@@ -102,7 +97,6 @@ choose_music_removals() {
         all)
             remove_ymc=true
             remove_cliamp=true
-            remove_spotify_tui=true
             return
             ;;
     esac
@@ -111,7 +105,6 @@ choose_music_removals() {
         case "$entry" in
             ymc) remove_ymc=true ;;
             cliamp) remove_cliamp=true ;;
-            spotify-tui|spotify|spt) remove_spotify_tui=true ;;
             *)
                 printf 'Unknown music client: %s\n' "$entry" >&2
                 return 1
@@ -184,21 +177,6 @@ fi
 if [[ "$remove_cliamp" == true ]]; then
     remove_packaged_client cliamp cliamp
 fi
-if [[ "$remove_spotify_tui" == true ]]; then
-    spt_path="$(command -v spt 2>/dev/null || true)"
-    spt_package=""
-    [[ -z "$spt_path" ]] || spt_package="$(pacman -Qoq "$spt_path" 2>/dev/null | head -n 1 || true)"
-    if [[ -n "$spt_package" ]]; then
-        omarchy pkg drop "$spt_package" || \
-            printf 'Could not remove spotify-tui package %s.\n' "$spt_package" >&2
-    elif [[ -z "$spt_path" || "$spt_path" == "$HOME/.local/bin/spt" ]]; then
-        retire_music_path "$HOME/.local/bin/spt" spt
-    else
-        printf 'Cannot safely remove spotify-tui from %s; remove it with its package manager.\n' \
-            "$spt_path" >&2
-    fi
-fi
-
 restore_marked_block() {
     local key="$1" target="$2" start="$3" finish="$4" temporary state
     mkdir -p "$(dirname "$target")"
@@ -255,7 +233,6 @@ fi
 restore_path shell "$shell_dir"
 restore_path theme "$theme_dir"
 restore_path menu-plugin "$menu_plugin_dir"
-restore_path spotify-tui "$spotify_tui_config"
 restore_path cliamp-theme "$cliamp_theme_file"
 restore_path ymc-unit "$ymc_unit_file"
 restore_path cliamp-unit "$cliamp_unit_file"
@@ -324,8 +301,7 @@ mv "$active_state" "$retired_dir/install-state"
 printf 'TENEBRIS removed. Your previous desktop state was restored.\n'
 printf 'Retired TENEBRIS files are recoverable at: %s\n' "$retired_dir"
 printf 'Core runtime packages were left in place.\n'
-if [[ "$remove_ymc" == true || "$remove_cliamp" == true \
-        || "$remove_spotify_tui" == true ]]; then
+if [[ "$remove_ymc" == true || "$remove_cliamp" == true ]]; then
     printf 'Selected music clients were removed when their install source was recognized.\n'
 else
     printf 'Music clients were left in place.\n'
