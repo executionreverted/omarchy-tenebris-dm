@@ -56,13 +56,16 @@ cd omarchy-tenebris-dm
   user explicitly selects a supported resolution/refresh profile; it must
   preserve the output's current scale, position and transform.
 - Treat `ymc`, `cliamp`, `spt`, `code` and `codex` as optional.
+- Ask about YMC, cliamp and spotify-tui separately. Interactive defaults are
+  yes for YMC/cliamp and no for spotify-tui; non-interactive installs require
+  an explicit `--music-clients` value.
 - Do not overwrite player credentials. `spotify-tui/client.yml` is never part
   of this repository.
-- Never redistribute the Argor font. The installer may import a user-supplied
-  `ArgFlahm.ttf` or `~/Downloads/argor_flahm_scaqh.zip`, must verify its font
-  family, and must restore the previous target on uninstall.
+- Install the bundled Argor font only after verifying its family, preserve its
+  author notice, and restore the previous target on uninstall.
 - Uninstall must restore the previous theme, menu, stock-bar flag, files and
-  service enable/active state. Installed system packages remain.
+  service enable/active state. Core runtime packages remain; optional music
+  clients may be removed only after a separate explicit confirmation for each.
 
 ## Asset policy
 
@@ -73,9 +76,10 @@ IP addresses, private project names, notifications and tokens. Launch the shell
 with `TENEBRIS_DEMO_MODE=1` for sanitized network, host and Workbench data.
 Shader source and its compiled `.qsb` must stay together.
 
-The optional Argor display font is not redistributable here. Preserve the Noto
-and JetBrains Mono fallbacks. Public videos must redact live Workbench names,
-SSIDs and IP addresses before entering `media/`.
+The bundled Argor display font keeps its own author notice and is outside the
+project's MIT grant. Preserve the Noto and JetBrains Mono fallbacks. Public
+videos must redact live Workbench names, SSIDs and IP addresses before entering
+`media/`.
 
 ## Required release checks
 

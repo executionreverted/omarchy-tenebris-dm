@@ -4,10 +4,15 @@ set -Eeuo pipefail
 skip_packages=false
 display_mode_request="ask"
 display_output_request=""
+music_clients_request="ask"
+want_ymc=false
+want_cliamp=false
+want_spotify_tui=false
 
 usage() {
     cat <<'EOF'
 Usage: ./install.sh [--skip-packages] [--display-mode MODE] [--display-output NAME]
+                    [--music-clients LIST]
 
 Installs TENEBRIS for the current Omarchy user. By default, missing core
 packages are installed through `omarchy pkg add`. Interactive installs offer
@@ -16,6 +21,9 @@ the connected displays' supported resolution and refresh-rate combinations.
   --skip-packages       Do not install packages; fail if a dependency is missing.
   --display-mode MODE   Use `keep` or a supported mode such as 2560x1600@240.00.
   --display-output NAME Target output for --display-mode; defaults to focused.
+  --music-clients LIST  Comma-separated ymc,cliamp,spotify-tui; or use
+                        recommended, all, or none. Interactive installs ask
+                        about each client separately.
 EOF
 }
 
@@ -41,6 +49,15 @@ while (( $# > 0 )); do
             ;;
         --display-output=*)
             display_output_request="${1#*=}"
+            shift
+            ;;
+        --music-clients)
+            [[ $# -ge 2 ]] || { printf '%s\n' '--music-clients requires a value.' >&2; exit 2; }
+            music_clients_request="$2"
+            shift 2
+            ;;
+        --music-clients=*)
+            music_clients_request="${1#*=}"
             shift
             ;;
         -h|--help)
@@ -105,6 +122,81 @@ require_quattro() {
 # creation, backups, or user configuration changes.
 require_quattro
 
+confirm_choice() {
+    local prompt="$1" default="$2" answer=""
+    printf '%s' "$prompt"
+    read -r answer || answer=""
+    answer="${answer,,}"
+    if [[ -z "$answer" ]]; then
+        [[ "$default" == yes ]]
+    else
+        [[ "$answer" == y || "$answer" == yes ]]
+    fi
+}
+
+choose_music_clients() {
+    local entry normalized
+    local -a requested=()
+
+    if [[ "$music_clients_request" == ask ]]; then
+        if [[ ! -t 0 || ! -t 1 ]]; then
+            printf 'Music clients: non-interactive install, selecting none.\n'
+            return
+        fi
+
+        printf '\nOptional music clients:\n'
+        if command -v ymc >/dev/null; then
+            confirm_choice '  Use the installed YMC integration? [Y/n] ' yes && want_ymc=true
+        else
+            confirm_choice '  Install YMC? [Y/n] (recommended) ' yes && want_ymc=true
+        fi
+        if command -v cliamp >/dev/null; then
+            confirm_choice '  Use the installed cliamp integration? [Y/n] ' yes && want_cliamp=true
+        else
+            confirm_choice '  Install cliamp? [Y/n] (recommended) ' yes && want_cliamp=true
+        fi
+        if command -v spt >/dev/null; then
+            confirm_choice '  Use the installed spotify-tui integration? [y/N] ' no \
+                && want_spotify_tui=true
+        else
+            confirm_choice '  Install spotify-tui? [y/N] (optional) ' no \
+                && want_spotify_tui=true
+        fi
+        return
+    fi
+
+    normalized="${music_clients_request,,}"
+    case "$normalized" in
+        none|"") return ;;
+        recommended)
+            want_ymc=true
+            want_cliamp=true
+            return
+            ;;
+        all)
+            want_ymc=true
+            want_cliamp=true
+            want_spotify_tui=true
+            return
+            ;;
+    esac
+
+    IFS=',' read -r -a requested <<<"$normalized"
+    for entry in "${requested[@]}"; do
+        case "$entry" in
+            ymc) want_ymc=true ;;
+            cliamp) want_cliamp=true ;;
+            spotify-tui|spotify|spt) want_spotify_tui=true ;;
+            *)
+                printf 'Unknown music client: %s\n' "$entry" >&2
+                return 1
+                ;;
+        esac
+    done
+}
+
+choose_music_clients
+
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 state_root="$HOME/.local/state/tenebris-omarchy"
 active_state="$state_root/active"
@@ -125,11 +217,22 @@ ymc_unit_file="$HOME/.config/systemd/user/tenebris-ymc.service"
 cliamp_unit_file="$HOME/.config/systemd/user/tenebris-cliamp.service"
 bar_off_file="$HOME/.local/state/omarchy/toggles/bar-off"
 title_font_file="$HOME/.local/share/fonts/tenebris/ArgFlahm.ttf"
+ymc_binary_file="$HOME/.local/bin/youtube-music-cli"
+ymc_alias_file="$HOME/.local/bin/ymc"
+spt_binary_file="$HOME/.local/bin/spt"
+cliamp_preinstalled=false
+command -v cliamp >/dev/null && cliamp_preinstalled=true
 
 core_packages=(
     quickshell-git cava jq playerctl tmux xdg-terminal-exec
-    noto-fonts nautilus btop xdg-user-dirs git
+    noto-fonts nautilus btop xdg-user-dirs git curl
 )
+if [[ "$want_ymc" == true ]]; then
+    core_packages+=(mpv yt-dlp)
+fi
+if [[ "$want_cliamp" == true ]]; then
+    core_packages+=(cliamp)
+fi
 if [[ "$skip_packages" == false ]]; then
     printf 'Installing missing TENEBRIS runtime packages...\n'
     omarchy pkg add "${core_packages[@]}"
@@ -137,7 +240,8 @@ fi
 
 required_commands=(
     qs cava flock jq hyprctl uwsm omarchy omarchy-shell python3 playerctl
-    tmux xdg-terminal-exec systemctl git xdg-user-dir btop nautilus
+    tmux xdg-terminal-exec systemctl git xdg-user-dir btop nautilus curl
+    tar sha256sum fc-scan fc-cache
 )
 missing=()
 for command_name in "${required_commands[@]}"; do
@@ -151,6 +255,20 @@ fi
 
 if ! cava -v >/dev/null 2>&1; then
     printf 'Cava is installed but its executable could not be started.\n' >&2
+    exit 1
+fi
+
+if [[ "$want_ymc" == true ]]; then
+    for command_name in mpv yt-dlp; do
+        command -v "$command_name" >/dev/null || {
+            printf 'YMC requires %s. Run without --skip-packages or install it manually.\n' \
+                "$command_name" >&2
+            exit 1
+        }
+    done
+fi
+if [[ "$want_cliamp" == true ]] && ! command -v cliamp >/dev/null; then
+    printf 'cliamp is missing. Run without --skip-packages or install it manually.\n' >&2
     exit 1
 fi
 
@@ -311,53 +429,104 @@ record_path title-font "$title_font_file"
 record_service_state tenebris-ymc.service ymc-unit
 record_service_state tenebris-cliamp.service cliamp-unit
 
-install_optional_title_font() {
-    local direct_font="${TENEBRIS_ARGOR_FONT:-}"
-    local archive="${TENEBRIS_ARGOR_ARCHIVE:-$HOME/Downloads/argor_flahm_scaqh.zip}"
-    local archive_entry="" extracted_font="" source_font=""
-
-    if fc-list : family | tr ',' '\n' | grep -Fqxi 'Argor Flahm Scaqh'; then
-        printf 'Optional title font already available: Argor Flahm Scaqh.\n'
-        return
-    fi
-
-    if [[ -n "$direct_font" && -f "$direct_font" ]]; then
-        source_font="$direct_font"
-    elif [[ -f "$HOME/Downloads/ArgFlahm.ttf" ]]; then
-        source_font="$HOME/Downloads/ArgFlahm.ttf"
-    elif [[ -f "$archive" && -x "$(command -v bsdtar 2>/dev/null || true)" ]]; then
-        archive_entry="$(bsdtar -tf "$archive" 2>/dev/null \
-            | awk 'tolower($0) ~ /(^|\/)argflahm\.(ttf|otf)$/ { print; exit }')"
-        if [[ -n "$archive_entry" ]]; then
-            extracted_font="$(mktemp)"
-            if bsdtar -xOf "$archive" "$archive_entry" >"$extracted_font" 2>/dev/null; then
-                source_font="$extracted_font"
-            else
-                rm -f "$extracted_font"
-                extracted_font=""
-            fi
-        fi
-    fi
-
-    if [[ -z "$source_font" ]]; then
-        printf 'Optional: Argor title font not found; using the Noto fallback.\n'
-        return
-    fi
-
+install_title_font() {
+    local source_font="$repo_dir/assets/fonts/ArgFlahm.ttf"
     if ! fc-scan --format '%{family}\n' "$source_font" 2>/dev/null \
             | grep -Fqxi 'Argor Flahm Scaqh'; then
-        printf 'Optional Argor font candidate has an unexpected family; using Noto.\n' >&2
-        [[ -z "$extracted_font" ]] || rm -f "$extracted_font"
-        return
+        printf 'Bundled Argor font has an unexpected family.\n' >&2
+        exit 1
     fi
 
     install -Dm644 "$source_font" "$title_font_file"
-    [[ -z "$extracted_font" ]] || rm -f "$extracted_font"
     fc-cache -f "$HOME/.local/share/fonts" >/dev/null
-    printf 'Installed the user-supplied Argor Flahm Scaqh title font.\n'
+    printf 'Installed the bundled Argor Flahm Scaqh title font.\n'
 }
 
-install_optional_title_font
+install_ymc_client() {
+    local temporary_dir release_json asset_url asset_digest downloaded_digest
+    command -v ymc >/dev/null && return
+    [[ "$(uname -m)" == x86_64 ]] || {
+        printf 'YMC currently provides a TENEBRIS-supported binary only for x86_64 Linux.\n' >&2
+        return 1
+    }
+
+    temporary_dir="$(mktemp -d)"
+    release_json="$temporary_dir/release.json"
+    curl --proto '=https' --tlsv1.2 -fL --retry 3 \
+        https://api.github.com/repos/involvex/youtube-music-cli/releases/latest \
+        -o "$release_json"
+    asset_url="$(jq -r '.assets[] | select(.name == "youtube-music-cli-linux-x64") | .browser_download_url' \
+        "$release_json" | head -n 1)"
+    asset_digest="$(jq -r '.assets[] | select(.name == "youtube-music-cli-linux-x64") | .digest // ""' \
+        "$release_json" | head -n 1)"
+    [[ -n "$asset_url" && "$asset_url" != null && "$asset_digest" == sha256:* ]] || {
+        printf 'Could not resolve a verified YMC release asset.\n' >&2
+        return 1
+    }
+    curl --proto '=https' --tlsv1.2 -fL --retry 3 "$asset_url" \
+        -o "$temporary_dir/youtube-music-cli"
+    downloaded_digest="$(sha256sum "$temporary_dir/youtube-music-cli" | awk '{print $1}')"
+    [[ "$downloaded_digest" == "${asset_digest#sha256:}" ]] || {
+        printf 'YMC release checksum verification failed.\n' >&2
+        return 1
+    }
+    install -Dm755 "$temporary_dir/youtube-music-cli" "$ymc_binary_file"
+    if [[ ! -e "$ymc_alias_file" && ! -L "$ymc_alias_file" ]]; then
+        ln -s youtube-music-cli "$ymc_alias_file"
+    fi
+    hash -r
+    command -v ymc >/dev/null || {
+        printf 'YMC was installed but its alias is unavailable in PATH.\n' >&2
+        return 1
+    }
+    touch "$active_state/installed-ymc-client"
+    rm -r -- "$temporary_dir"
+    printf 'Installed YMC from its verified GitHub release.\n'
+}
+
+install_spotify_tui_client() {
+    local temporary_dir expected_digest downloaded_digest
+    command -v spt >/dev/null && return
+    [[ "$(uname -m)" == x86_64 ]] || {
+        printf 'spotify-tui currently provides a TENEBRIS-supported binary only for x86_64 Linux.\n' >&2
+        return 1
+    }
+
+    temporary_dir="$(mktemp -d)"
+    curl --proto '=https' --tlsv1.2 -fL --retry 3 \
+        https://github.com/Rigellute/spotify-tui/releases/latest/download/spotify-tui-linux.tar.gz \
+        -o "$temporary_dir/spotify-tui-linux.tar.gz"
+    curl --proto '=https' --tlsv1.2 -fL --retry 3 \
+        https://github.com/Rigellute/spotify-tui/releases/latest/download/spotify-tui-linux.sha256 \
+        -o "$temporary_dir/spotify-tui-linux.sha256"
+    expected_digest="$(awk 'NF { print $1; exit }' "$temporary_dir/spotify-tui-linux.sha256")"
+    downloaded_digest="$(sha256sum "$temporary_dir/spotify-tui-linux.tar.gz" | awk '{print $1}')"
+    [[ -n "$expected_digest" && "$downloaded_digest" == "$expected_digest" ]] || {
+        printf 'spotify-tui release checksum verification failed.\n' >&2
+        return 1
+    }
+    tar -xzf "$temporary_dir/spotify-tui-linux.tar.gz" -C "$temporary_dir" spt
+    install -Dm755 "$temporary_dir/spt" "$spt_binary_file"
+    hash -r
+    spt --version >/dev/null 2>&1 || {
+        printf 'spotify-tui was installed but failed its startup check.\n' >&2
+        return 1
+    }
+    touch "$active_state/installed-spotify-tui-client"
+    rm -r -- "$temporary_dir"
+    printf 'Installed spotify-tui from its verified GitHub release.\n'
+}
+
+install_title_font
+if [[ "$want_ymc" == true ]]; then
+    install_ymc_client
+fi
+if [[ "$want_cliamp" == true && "$cliamp_preinstalled" == false ]]; then
+    touch "$active_state/installed-cliamp-client"
+fi
+if [[ "$want_spotify_tui" == true ]]; then
+    install_spotify_tui_client
+fi
 
 if [[ ! -f "$active_state/previous-theme" ]]; then
     previous_theme="$(omarchy theme current 2>/dev/null || printf 'Tokyo Night')"
@@ -457,21 +626,22 @@ if [[ -n "$settings_cache" ]]; then
 fi
 chmod 755 "$shell_dir"/*.py "$shell_dir"/*.sh
 
-if command -v spt >/dev/null && [[ "$(spt --version 2>/dev/null || true)" == spotify-tui\ * ]]; then
+if [[ "$want_spotify_tui" == true ]] && command -v spt >/dev/null \
+        && [[ "$(spt --version 2>/dev/null || true)" == spotify-tui\ * ]]; then
     deploy_file "$repo_dir/config/spotify-tui/config.yml" "$spotify_tui_config" spotify-tui
     touch "$active_state/managed-spotify-tui"
 else
     printf 'Optional: spotify-tui not found; Spotify dock integration is inactive.\n'
 fi
 
-if command -v ymc >/dev/null; then
+if [[ "$want_ymc" == true ]] && command -v ymc >/dev/null; then
     deploy_file "$repo_dir/systemd/user/tenebris-ymc.service" "$ymc_unit_file" ymc-unit
     touch "$active_state/managed-ymc"
 else
     printf 'Optional: ymc not found; YouTube Music integration is inactive.\n'
 fi
 
-if command -v cliamp >/dev/null; then
+if [[ "$want_cliamp" == true ]] && command -v cliamp >/dev/null; then
     deploy_file "$repo_dir/systemd/user/tenebris-cliamp.service" "$cliamp_unit_file" cliamp-unit
     deploy_file "$repo_dir/config/cliamp/themes/tenebris.toml" "$cliamp_theme_file" cliamp-theme
     touch "$active_state/managed-cliamp"

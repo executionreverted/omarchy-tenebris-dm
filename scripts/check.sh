@@ -6,6 +6,7 @@ cd "$repo_dir"
 
 required_files=(
     README.md AGENTS.md LICENSE docs/MARKETPLACE.md install.sh uninstall.sh
+    assets/fonts/ArgFlahm.ttf assets/fonts/Argor.txt
     media/tenebris-preview.jpg media/tenebris-preview.mp4
     config/quickshell/tenebris-shell/shell.qml
     config/quickshell/tenebris-shell/settings.json
@@ -21,6 +22,14 @@ required_files=(
 for path in "${required_files[@]}"; do
     [[ -f "$path" ]] || { printf 'Missing required file: %s\n' "$path" >&2; exit 1; }
 done
+
+if command -v fc-scan >/dev/null; then
+    font_family="$(fc-scan --format '%{family}\n' assets/fonts/ArgFlahm.ttf 2>/dev/null)"
+    [[ "$font_family" == *"Argor Flahm Scaqh"* ]] || {
+        printf 'Bundled Argor font has an unexpected family: %s\n' "$font_family" >&2
+        exit 1
+    }
+fi
 
 mapfile -t promo_videos < <(find media -maxdepth 1 -type f -name '*.mp4' -print)
 if (( ${#promo_videos[@]} != 1 )); then
@@ -84,11 +93,27 @@ for (section, option), expected in cava_contract.items():
         )
 
 installer = (root / "install.sh").read_text(encoding="utf-8")
-for array_name in ("core_packages", "required_commands"):
+array_contract = {
+    "core_packages": {"cava", "curl"},
+    "required_commands": {"cava", "curl", "tar", "sha256sum", "fc-scan", "fc-cache"},
+}
+for array_name, required_entries in array_contract.items():
     match = re.search(rf"{array_name}=\((.*?)\)", installer, re.DOTALL)
-    entries = match.group(1).split() if match else []
-    if "cava" not in entries:
-        raise SystemExit(f"Installer array {array_name} does not include cava")
+    entries = set(match.group(1).split()) if match else set()
+    missing_entries = sorted(required_entries - entries)
+    if missing_entries:
+        raise SystemExit(
+            f"Installer array {array_name} is missing: {', '.join(missing_entries)}"
+        )
+
+for client in ("YMC", "cliamp", "spotify-tui"):
+    if client not in installer:
+        raise SystemExit(f"Installer does not expose the {client} client choice")
+
+uninstaller = (root / "uninstall.sh").read_text(encoding="utf-8")
+for client in ("YMC", "cliamp", "spotify-tui"):
+    if f"Remove {client}?" not in uninstaller:
+        raise SystemExit(f"Uninstaller does not ask separately about {client}")
 
 for path in root.rglob("*.py"):
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

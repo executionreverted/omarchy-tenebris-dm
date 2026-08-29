@@ -1,6 +1,46 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+remove_music_clients_request="ask"
+remove_ymc=false
+remove_cliamp=false
+remove_spotify_tui=false
+
+usage() {
+    cat <<'EOF'
+Usage: ./uninstall.sh [--remove-music-clients LIST]
+
+Restores the desktop state saved by TENEBRIS. Interactive uninstalls ask about
+each detected music client separately.
+
+  --remove-music-clients LIST  Comma-separated ymc,cliamp,spotify-tui; or use
+                               all or none. Login and library data are kept.
+EOF
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        --remove-music-clients)
+            [[ $# -ge 2 ]] || { printf '%s\n' '--remove-music-clients requires a value.' >&2; exit 2; }
+            remove_music_clients_request="$2"
+            shift 2
+            ;;
+        --remove-music-clients=*)
+            remove_music_clients_request="${1#*=}"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            printf 'Unknown option: %s\n' "$1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
 state_root="$HOME/.local/state/tenebris-omarchy"
 active_state="$state_root/active"
 stamp="$(date +%Y%m%d-%H%M%S)"
@@ -26,6 +66,62 @@ if [[ ! -d "$active_state" ]]; then
     exit 0
 fi
 
+confirm_removal() {
+    local prompt="$1" answer=""
+    printf '%s' "$prompt"
+    read -r answer || answer=""
+    answer="${answer,,}"
+    [[ "$answer" == y || "$answer" == yes ]]
+}
+
+choose_music_removals() {
+    local entry normalized
+    local -a requested=()
+
+    if [[ "$remove_music_clients_request" == ask ]]; then
+        if [[ ! -t 0 || ! -t 1 ]]; then
+            printf 'Music clients: non-interactive uninstall, keeping all clients.\n'
+            return
+        fi
+        printf '\nOptional music clients:\n'
+        if command -v ymc >/dev/null || [[ -e "$HOME/.local/bin/youtube-music-cli" ]]; then
+            confirm_removal '  Remove YMC? [y/N] ' && remove_ymc=true
+        fi
+        if command -v cliamp >/dev/null; then
+            confirm_removal '  Remove cliamp? [y/N] ' && remove_cliamp=true
+        fi
+        if command -v spt >/dev/null || [[ -e "$HOME/.local/bin/spt" ]]; then
+            confirm_removal '  Remove spotify-tui? [y/N] ' && remove_spotify_tui=true
+        fi
+        return
+    fi
+
+    normalized="${remove_music_clients_request,,}"
+    case "$normalized" in
+        none|"") return ;;
+        all)
+            remove_ymc=true
+            remove_cliamp=true
+            remove_spotify_tui=true
+            return
+            ;;
+    esac
+    IFS=',' read -r -a requested <<<"$normalized"
+    for entry in "${requested[@]}"; do
+        case "$entry" in
+            ymc) remove_ymc=true ;;
+            cliamp) remove_cliamp=true ;;
+            spotify-tui|spotify|spt) remove_spotify_tui=true ;;
+            *)
+                printf 'Unknown music client: %s\n' "$entry" >&2
+                return 1
+                ;;
+        esac
+    done
+}
+
+choose_music_removals
+
 mkdir -p "$retired_dir"
 
 existing_pid="$(qs list --all 2>/dev/null | awk '/Process ID:/{pid=$3} /tenebris-shell/{print pid; exit}')"
@@ -45,6 +141,62 @@ if [[ -f "$active_state/managed-ymc" ]]; then
 fi
 if [[ -f "$active_state/managed-cliamp" ]]; then
     systemctl --user disable --now tenebris-cliamp.service >/dev/null 2>&1 || true
+fi
+
+retire_music_path() {
+    local target="$1" label="$2" destination
+    [[ -e "$target" || -L "$target" ]] || return
+    destination="$retired_dir/music-clients/$label"
+    mkdir -p "$(dirname "$destination")"
+    mv "$target" "$destination"
+}
+
+remove_packaged_client() {
+    local command_name="$1" expected_package="$2" command_path package
+    command_path="$(command -v "$command_name" 2>/dev/null || true)"
+    [[ -n "$command_path" ]] || return
+    package="$(pacman -Qoq "$command_path" 2>/dev/null | head -n 1 || true)"
+    if [[ "$package" == "$expected_package" ]]; then
+        if ! omarchy pkg drop "$package"; then
+            printf 'Could not remove %s; leaving the package installed.\n' "$package" >&2
+        fi
+    else
+        printf 'Cannot safely remove %s from %s; remove it with its package manager.\n' \
+            "$command_name" "$command_path" >&2
+    fi
+}
+
+if [[ "$remove_ymc" == true ]]; then
+    ymc_path="$(command -v ymc 2>/dev/null || true)"
+    ymc_package=""
+    [[ -z "$ymc_path" ]] || ymc_package="$(pacman -Qoq "$ymc_path" 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$ymc_package" ]]; then
+        omarchy pkg drop "$ymc_package" || \
+            printf 'Could not remove YMC package %s.\n' "$ymc_package" >&2
+    elif [[ -z "$ymc_path" || "$ymc_path" == "$HOME/.local/bin/ymc" ]]; then
+        retire_music_path "$HOME/.local/bin/ymc" ymc
+        retire_music_path "$HOME/.local/bin/youtube-music-cli" youtube-music-cli
+    else
+        printf 'Cannot safely remove YMC from %s; remove it with its package manager.\n' \
+            "$ymc_path" >&2
+    fi
+fi
+if [[ "$remove_cliamp" == true ]]; then
+    remove_packaged_client cliamp cliamp
+fi
+if [[ "$remove_spotify_tui" == true ]]; then
+    spt_path="$(command -v spt 2>/dev/null || true)"
+    spt_package=""
+    [[ -z "$spt_path" ]] || spt_package="$(pacman -Qoq "$spt_path" 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$spt_package" ]]; then
+        omarchy pkg drop "$spt_package" || \
+            printf 'Could not remove spotify-tui package %s.\n' "$spt_package" >&2
+    elif [[ -z "$spt_path" || "$spt_path" == "$HOME/.local/bin/spt" ]]; then
+        retire_music_path "$HOME/.local/bin/spt" spt
+    else
+        printf 'Cannot safely remove spotify-tui from %s; remove it with its package manager.\n' \
+            "$spt_path" >&2
+    fi
 fi
 
 restore_marked_block() {
@@ -171,4 +323,11 @@ omarchy restart shell
 mv "$active_state" "$retired_dir/install-state"
 printf 'TENEBRIS removed. Your previous desktop state was restored.\n'
 printf 'Retired TENEBRIS files are recoverable at: %s\n' "$retired_dir"
-printf 'Packages installed by TENEBRIS were left in place.\n'
+printf 'Core runtime packages were left in place.\n'
+if [[ "$remove_ymc" == true || "$remove_cliamp" == true \
+        || "$remove_spotify_tui" == true ]]; then
+    printf 'Selected music clients were removed when their install source was recognized.\n'
+else
+    printf 'Music clients were left in place.\n'
+fi
+printf 'Music login, library and credential data were preserved.\n'
