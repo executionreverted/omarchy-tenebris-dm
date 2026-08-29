@@ -73,7 +73,13 @@ Rectangle {
 
     Item {
         id: titleBar
-        readonly property real titleReserve: rightControls.visible
+        readonly property bool headerButtonsRequested: root.headerIcon.length > 0
+            || root.headerSecondaryIcon.length > 0
+        readonly property bool subtitleRequested: root.subtitle.length > 0
+            && root.width >= 420
+            && (!titleBar.headerButtonsRequested || root.showSubtitleWithButtons)
+        readonly property real titleReserve: titleBar.subtitleRequested
+                || titleBar.headerButtonsRequested
             ? rightControls.width + 18 : 0
         anchors.left: parent.left
         anchors.leftMargin: root.textured ? 42 : 18
@@ -88,14 +94,16 @@ Rectangle {
             id: rightControls
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            width: (titleBar.subtitleRequested ? subtitleText.width : 0)
+                + (titleBar.subtitleRequested && titleBar.headerButtonsRequested ? spacing : 0)
+                + (titleBar.headerButtonsRequested ? headerButtons.width : 0)
             height: parent.height
             spacing: 7
-            visible: subtitleText.visible || headerButtons.visible
+            visible: titleBar.subtitleRequested || titleBar.headerButtonsRequested
 
             Text {
                 id: subtitleText
-                visible: root.subtitle.length > 0 && root.width >= 420
-                    && (!headerButtons.visible || root.showSubtitleWithButtons)
+                visible: titleBar.subtitleRequested
                 width: Math.min(118, implicitWidth)
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.subtitle
@@ -121,8 +129,11 @@ Rectangle {
             Row {
                 id: headerButtons
                 anchors.verticalCenter: parent.verticalCenter
+                width: (root.headerIcon.length > 0 ? headerButton.width : 0)
+                    + (root.headerIcon.length > 0 && root.headerSecondaryIcon.length > 0 ? spacing : 0)
+                    + (root.headerSecondaryIcon.length > 0 ? headerSecondaryButton.width : 0)
                 spacing: 4
-                visible: root.headerIcon.length > 0 || root.headerSecondaryIcon.length > 0
+                visible: titleBar.headerButtonsRequested
 
                 Rectangle {
                     id: headerButton

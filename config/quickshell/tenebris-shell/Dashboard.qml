@@ -921,6 +921,7 @@ PanelWindow {
                     id: projectsList
                     anchors.fill: parent
                     anchors.rightMargin: 5
+                    enabled: !root.projectSortOpen
                     model: root.projects
                     spacing: 3
                     clip: true
@@ -931,7 +932,8 @@ PanelWindow {
                     delegate: Rectangle {
                         id: projectRow
                         required property var modelData
-                        readonly property bool hovered: projectHover.hovered
+                        readonly property bool hovered: !root.projectSortOpen
+                            && projectHover.hovered
                         width: ListView.view.width
                         height: 45
                         color: hovered ? "#181716" : "transparent"
