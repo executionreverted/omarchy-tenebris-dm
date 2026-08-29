@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Wayland
 
 PanelWindow {
@@ -15,6 +16,9 @@ PanelWindow {
     property real renderScale: 0.75
     property int idleSeconds: 90
     property int weaveSeconds: 30
+    property bool stayAwake: false
+    property bool stayAwakeKnown: false
+    property bool stayAwakePending: false
 
     signal closeRequested()
     signal enabledRequested(bool value)
@@ -27,13 +31,35 @@ PanelWindow {
     signal weaveRequested(int value)
     signal previewRequested()
 
+    function refreshStayAwake() {
+        if (!idleStatusProcess.running && !idleToggleProcess.running)
+            idleStatusProcess.running = true;
+    }
+
+    function setStayAwake(value) {
+        if (!root.stayAwakeKnown || root.stayAwakePending
+                || idleToggleProcess.running)
+            return;
+
+        root.stayAwakePending = true;
+        idleToggleProcess.requestedState = value;
+        idleToggleProcess.running = true;
+    }
+
     visible: root.open
     aboveWindows: true
     focusable: false
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     implicitWidth: 286
-    implicitHeight: 414
+    implicitHeight: 451
+
+    onOpenChanged: {
+        if (open)
+            Qt.callLater(refreshStayAwake);
+    }
+
+    Component.onCompleted: refreshStayAwake()
 
     anchors {
         top: true
@@ -65,6 +91,9 @@ PanelWindow {
         renderScale: root.renderScale
         idleSeconds: root.idleSeconds
         weaveSeconds: root.weaveSeconds
+        stayAwake: root.stayAwake
+        stayAwakeKnown: root.stayAwakeKnown
+        stayAwakePending: root.stayAwakePending
         onCloseRequested: root.closeRequested()
         onEnabledRequested: value => root.enabledRequested(value)
         onDensityRequested: value => root.densityRequested(value)
@@ -74,6 +103,48 @@ PanelWindow {
         onRenderScaleRequested: value => root.renderScaleRequested(value)
         onIdleRequested: value => root.idleRequested(value)
         onWeaveRequested: value => root.weaveRequested(value)
+        onStayAwakeRequested: value => root.setStayAwake(value)
         onPreviewRequested: root.previewRequested()
+    }
+
+    Process {
+        id: idleStatusProcess
+        command: ["omarchy-shell", "idle", "status"]
+        stdout: StdioCollector {
+            id: idleStatusOutput
+            waitForEnd: true
+        }
+        onExited: function(exitCode) {
+            if (exitCode === 0) {
+                try {
+                    const status = JSON.parse(String(idleStatusOutput.text || "{}"));
+                    root.stayAwake = status.stayAwake === true;
+                    root.stayAwakeKnown = true;
+                } catch (error) {
+                    root.stayAwakeKnown = false;
+                    console.warn("TENEBRIS idle status parse failed:", error);
+                }
+            } else {
+                root.stayAwakeKnown = false;
+            }
+            root.stayAwakePending = false;
+        }
+    }
+
+    Process {
+        id: idleToggleProcess
+        property bool requestedState: false
+        command: [
+            "omarchy-shell", "idle",
+            requestedState ? "disable" : "enable"
+        ]
+        onExited: idleStatusProcess.running = true
+    }
+
+    Timer {
+        interval: 2000
+        repeat: true
+        running: root.open
+        onTriggered: root.refreshStayAwake()
     }
 }

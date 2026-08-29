@@ -25,6 +25,7 @@ Item {
   property real webRenderScale: 0.75
   property int webIdleSeconds: 90
   property int webWeaveSeconds: 30
+  property int webBlankHoldSeconds: 3
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string assetRoot: home + "/.config/quickshell/tenebris-shell/assets"
@@ -43,6 +44,8 @@ Item {
   signal wakeRequested()
   signal lockWebStarted()
   signal lockWebDismissed()
+  signal lockWebCompleted()
+  signal displayBlankRequested()
 
   function fileUrl(path) {
     if (!path) return ""
@@ -72,6 +75,7 @@ Item {
 
   function resetLockWebTimer() {
     lockWebIdleTimer.stop()
+    lockWebBlankTimer.stop()
     if (root.inputEnabled && root.sessionSecure && root.webScreensaverEnabled
         && !root.authenticatingPassword && !lockWeb.overlayVisible)
       lockWebIdleTimer.restart()
@@ -91,6 +95,7 @@ Item {
   onInputEnabledChanged: {
     if (!inputEnabled) {
       lockWebIdleTimer.stop()
+      lockWebBlankTimer.stop()
       lockWeb.resetWeb()
       return
     }
@@ -100,6 +105,7 @@ Item {
   onSessionSecureChanged: {
     if (!sessionSecure) {
       lockWebIdleTimer.stop()
+      lockWebBlankTimer.stop()
       lockWeb.resetWeb()
       return
     }
@@ -374,6 +380,10 @@ Item {
       fragmentShaderSource: root.plainFileUrl(root.shellRoot + "/shaders/spiderweb.frag.qsb")
       spiderSpriteSource: root.plainFileUrl(root.assetRoot + "/spider_walk_sheet.png")
       onInteractionRequested: root.wakeRequested()
+      onWeaveCompleted: {
+        root.lockWebCompleted()
+        lockWebBlankTimer.restart()
+      }
       onDismissed: {
         root.lockWebDismissed()
         root.forcePasswordFocus()
@@ -392,6 +402,17 @@ Item {
         lockWeb.beginWeb()
         root.lockWebStarted()
       }
+    }
+  }
+
+  Timer {
+    id: lockWebBlankTimer
+    interval: Math.max(1, root.webBlankHoldSeconds) * 1000
+    repeat: false
+    onTriggered: {
+      if (root.inputEnabled && root.sessionSecure && lockWeb.overlayVisible
+          && !lockWeb.scattering && lockWeb.buildProgress >= 1)
+        root.displayBlankRequested()
     }
   }
 }

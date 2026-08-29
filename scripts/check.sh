@@ -164,12 +164,24 @@ lock_web_contract = {
     "root.hideDesktopWeb()": "desktop-web cleanup after secure lock",
     "webScreensaverEnabled: root.webScreensaverEnabled": "shared web settings",
     "id: lockWebIdleTimer": "fresh idle period on the lock screen",
+    "id: lockWebBlankTimer": "OLED-safe final-frame hold",
     "LockWebOfSilence {": "lock-surface Web of Silence scene",
     "lock-web-started": "lock-surface screensaver lifecycle signal",
+    "lock-web-display-off": "OLED-safe panel blank lifecycle signal",
 }
 for needle, purpose in lock_web_contract.items():
     if needle not in lock_service and needle not in lock_view:
         raise SystemExit(f"TENEBRIS lock is missing {purpose}: {needle}")
+
+web_settings_overlay = (shell / "WebSettingsOverlay.qml").read_text(encoding="utf-8")
+web_settings_menu = (shell / "WebSettingsMenu.qml").read_text(encoding="utf-8")
+stay_awake_contract = {
+    "omarchy-shell\", \"idle\"": "Omarchy idle IPC integration",
+    "stayAwakeRequested": "Web settings Stay Awake control",
+}
+for needle, purpose in stay_awake_contract.items():
+    if needle not in web_settings_overlay and needle not in web_settings_menu:
+        raise SystemExit(f"Web settings are missing {purpose}: {needle}")
 
 ymc_unit = (root / "systemd/user/tenebris-ymc.service").read_text(encoding="utf-8")
 if "ymc-engine.py" not in ymc_unit:

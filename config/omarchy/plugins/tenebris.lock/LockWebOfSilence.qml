@@ -32,6 +32,7 @@ Item {
 
   signal interactionRequested()
   signal dismissed()
+  signal weaveCompleted()
 
   function fract(value) {
     return value - Math.floor(value)
@@ -197,7 +198,10 @@ Item {
         root.weavePhase = Math.min(1,
           root.weavePhase + delta / Math.max(1, root.weaveSeconds))
         root.buildProgress = root.weavePhase
-        if (root.weavePhase >= 1) root.weaving = false
+        if (root.weavePhase >= 1) {
+          root.weaving = false
+          root.weaveCompleted()
+        }
       }
 
       if (root.scattering) {

@@ -177,14 +177,20 @@ The dashboard terminal artwork is plain text and can be edited at:
 ~/.config/quickshell/tenebris-shell/dashboard-art.txt
 ```
 
-Right-click the Black Archive seal to open the web controls. Use Omarchy's
-usual wallpaper shortcut to rotate the two included backgrounds. The default
-is `00-dungeon-gate.png`; `01-cathedral-vault.png` is the alternate. Their
-canonical copies live in [`assets/wallpapers`](assets/wallpapers).
+Right-click the Black Archive seal to open the web controls. The **Stay awake**
+toggle reflects Omarchy's live idle state: enable it to suppress automatic
+lock and display blanking, or disable it for the complete idle sequence. Use
+Omarchy's usual wallpaper shortcut to rotate the two included backgrounds.
+The default is `00-dungeon-gate.png`; `01-cathedral-vault.png` is the alternate.
+Their canonical copies live in [`assets/wallpapers`](assets/wallpapers).
 
 The shipped **Web of Silence** profile uses density `0.95`, wind `1.75`,
 motion `2.0`, 30 FPS at `0.75×` render scale, a 90-second idle delay and a
-30-second weave. Existing settings remain untouched when TENEBRIS is updated.
+30-second weave. With normal idle enabled, the desktop web hands off to the
+lock screen; after the lock-screen web completes, TENEBRIS turns off only the
+display panel. Applications, music, downloads and terminal processes continue
+running, and the first input wakes the panel back to the lock screen. Existing
+settings remain untouched when TENEBRIS is updated.
 
 ## Useful commands
 

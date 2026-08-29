@@ -309,6 +309,11 @@ Item {
         onWakeRequested: root.runWake()
         onLockWebStarted: root.logEvent("lock-web-started")
         onLockWebDismissed: root.logEvent("lock-web-dismissed")
+        onLockWebCompleted: root.logEvent("lock-web-completed")
+        onDisplayBlankRequested: {
+          root.logEvent("lock-web-display-off")
+          root.runBlank()
+        }
       }
 
     }

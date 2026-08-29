@@ -12,6 +12,9 @@ Rectangle {
     property real renderScale: 0.75
     property int idleSeconds: 90
     property int weaveSeconds: 30
+    property bool stayAwake: false
+    property bool stayAwakeKnown: false
+    property bool stayAwakePending: false
 
     signal closeRequested()
     signal enabledRequested(bool value)
@@ -22,10 +25,11 @@ Rectangle {
     signal renderScaleRequested(real value)
     signal idleRequested(int value)
     signal weaveRequested(int value)
+    signal stayAwakeRequested(bool value)
     signal previewRequested()
 
     implicitWidth: 286
-    implicitHeight: 414
+    implicitHeight: 451
     color: "#0B0B0B"
     border.color: TenebrisTheme.border
     border.width: 1
@@ -236,6 +240,54 @@ Rectangle {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.enabledRequested(!root.webEnabled)
+            }
+        }
+
+        Rectangle {
+            width: parent.width
+            height: 37
+            color: stayAwakeMouse.containsMouse ? "#1D1C1B" : "transparent"
+
+            Text {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Stay awake"
+                color: root.stayAwakeKnown
+                    ? TenebrisTheme.textMuted : TenebrisTheme.borderDim
+                font.family: TenebrisTheme.contentFont
+                font.pixelSize: TenebrisTheme.typeMeta
+            }
+
+            Rectangle {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                width: 38
+                height: 17
+                color: "transparent"
+                border.color: root.stayAwake
+                    ? TenebrisTheme.silver : TenebrisTheme.borderDim
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: root.stayAwake ? parent.width - width - 3 : 3
+                    width: 11
+                    height: 11
+                    color: root.stayAwake
+                        ? TenebrisTheme.silver : "#494744"
+
+                    Behavior on x {
+                        NumberAnimation { duration: TenebrisTheme.motionFast }
+                    }
+                }
+            }
+
+            MouseArea {
+                id: stayAwakeMouse
+                anchors.fill: parent
+                enabled: root.stayAwakeKnown && !root.stayAwakePending
+                hoverEnabled: true
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: root.stayAwakeRequested(!root.stayAwake)
             }
         }
 
