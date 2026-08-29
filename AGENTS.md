@@ -19,6 +19,7 @@ user account and keep the public repository free of machine-specific data.
 - `hypr/tenebris/` — Lua snippets inserted into the user's Omarchy config
 - `systemd/user/` — optional YMC and cliamp companions
 - `docs/MARKETPLACE.md` — deferred Marketplace split and publication checklist
+- `docs/adding-new-features.md` — extension workflow, dock example and art guide
 - `install.sh`, `uninstall.sh` — reversible user-level deployment
 - `scripts/check.sh` — release validation
 

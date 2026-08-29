@@ -5,7 +5,8 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_dir"
 
 required_files=(
-    README.md AGENTS.md LICENSE docs/MARKETPLACE.md install.sh uninstall.sh
+    README.md AGENTS.md LICENSE docs/MARKETPLACE.md
+    docs/adding-new-features.md install.sh uninstall.sh
     assets/fonts/ArgFlahm.ttf assets/fonts/Argor.txt
     assets/wallpapers/00-dungeon-gate.png
     assets/wallpapers/01-cathedral-vault.png

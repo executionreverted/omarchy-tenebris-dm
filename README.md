@@ -186,6 +186,12 @@ The shipped **Web of Silence** profile uses density `0.95`, wind `1.75`,
 motion `2.0`, 30 FPS at `0.75×` render scale, a 90-second idle delay and a
 30-second weave. Existing settings remain untouched when TENEBRIS is updated.
 
+## Extend TENEBRIS
+
+Contributors can follow [Adding New Features](docs/adding-new-features.md) for
+the repository architecture, a complete dock-app example, asset-generation art
+direction, installer rules and the release checklist.
+
 ## Uninstall
 
 ```bash
