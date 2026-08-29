@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as Controls
 import Quickshell
 
 Rectangle {
@@ -16,10 +17,13 @@ Rectangle {
     // their geometric box. Keep every archive heading on the optical axis.
     property real titleOpticalOffset: 4
     property string headerIcon: ""
+    property string headerIconTooltip: ""
     property bool headerIconActive: false
     property bool headerIconBare: false
     property string headerSecondaryIcon: ""
+    property string headerSecondaryIconTooltip: ""
     property bool headerSecondaryIconActive: false
+    property bool headerSecondaryIconBare: false
     property bool showSubtitleWithButtons: false
     property bool subtitleInteractive: false
     signal headerIconClicked()
@@ -152,6 +156,34 @@ Rectangle {
                         onClicked: root.headerIconClicked()
                     }
 
+                    Controls.ToolTip {
+                        visible: root.headerIconTooltip.length > 0
+                            && headerButtonMouse.containsMouse
+                        text: root.headerIconTooltip
+                        delay: 320
+                        timeout: 5000
+                        padding: 0
+
+                        background: Rectangle {
+                            color: "#F2050505"
+                            border.color: TenebrisTheme.border
+                            border.width: 1
+                            radius: 0
+                        }
+
+                        contentItem: Text {
+                            text: root.headerIconTooltip
+                            color: TenebrisTheme.bone
+                            font.family: TenebrisTheme.contentFont
+                            font.pixelSize: TenebrisTheme.typeMeta
+                            font.letterSpacing: 0.35
+                            leftPadding: 9
+                            rightPadding: 9
+                            topPadding: 6
+                            bottomPadding: 6
+                        }
+                    }
+
                     Behavior on color { ColorAnimation { duration: TenebrisTheme.motionFast } }
                 }
 
@@ -160,13 +192,14 @@ Rectangle {
                     width: 28
                     height: 19
                     visible: root.headerSecondaryIcon.length > 0
-                    color: root.headerSecondaryIconActive || headerSecondaryButtonMouse.containsMouse
-                        ? TenebrisTheme.bloodDark
-                        : "#76090909"
-                    border.color: root.headerSecondaryIconActive
-                        ? TenebrisTheme.bloodBright
-                        : (headerSecondaryButtonMouse.containsMouse ? TenebrisTheme.border : TenebrisTheme.borderDim)
-                    border.width: 1
+                    color: root.headerSecondaryIconBare ? "transparent"
+                        : (root.headerSecondaryIconActive || headerSecondaryButtonMouse.containsMouse
+                            ? TenebrisTheme.bloodDark : "#76090909")
+                    border.color: root.headerSecondaryIconBare ? "transparent"
+                        : (root.headerSecondaryIconActive
+                            ? TenebrisTheme.bloodBright
+                            : (headerSecondaryButtonMouse.containsMouse ? TenebrisTheme.border : TenebrisTheme.borderDim))
+                    border.width: root.headerSecondaryIconBare ? 0 : 1
 
                     Text {
                         anchors.centerIn: parent
@@ -175,7 +208,7 @@ Rectangle {
                             ? TenebrisTheme.bone
                             : TenebrisTheme.silver
                         font.family: TenebrisTheme.monoFont
-                        font.pixelSize: 11
+                        font.pixelSize: root.headerSecondaryIconBare ? 14 : 11
                     }
 
                     MouseArea {
@@ -184,6 +217,34 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.headerSecondaryIconClicked()
+                    }
+
+                    Controls.ToolTip {
+                        visible: root.headerSecondaryIconTooltip.length > 0
+                            && headerSecondaryButtonMouse.containsMouse
+                        text: root.headerSecondaryIconTooltip
+                        delay: 320
+                        timeout: 5000
+                        padding: 0
+
+                        background: Rectangle {
+                            color: "#F2050505"
+                            border.color: TenebrisTheme.border
+                            border.width: 1
+                            radius: 0
+                        }
+
+                        contentItem: Text {
+                            text: root.headerSecondaryIconTooltip
+                            color: TenebrisTheme.bone
+                            font.family: TenebrisTheme.contentFont
+                            font.pixelSize: TenebrisTheme.typeMeta
+                            font.letterSpacing: 0.35
+                            leftPadding: 9
+                            rightPadding: 9
+                            topPadding: 6
+                            bottomPadding: 6
+                        }
                     }
 
                     Behavior on color { ColorAnimation { duration: TenebrisTheme.motionFast } }

@@ -877,14 +877,23 @@ PanelWindow {
                 subtitle: root.projectRoot
                 subtitleInteractive: true
                 showSubtitleWithButtons: true
-                headerIcon: "󰒺"
+                headerIcon: "󰉋"
+                headerIconTooltip: "Choose source folder"
                 headerIconBare: true
-                headerIconActive: root.projectSortOpen
+                headerIconActive: root.projectPickerOpen
+                headerSecondaryIcon: "󰒺"
+                headerSecondaryIconTooltip: "Sort projects"
+                headerSecondaryIconBare: true
+                headerSecondaryIconActive: root.projectSortOpen
                 onSubtitleClicked: {
                     root.projectSortOpen = false;
                     root.projectPickerOpen = true;
                 }
-                onHeaderIconClicked: root.projectSortOpen = !root.projectSortOpen
+                onHeaderIconClicked: {
+                    root.projectSortOpen = false;
+                    root.projectPickerOpen = true;
+                }
+                onHeaderSecondaryIconClicked: root.projectSortOpen = !root.projectSortOpen
                 textured: !root.cleanMode
 
                 Image {
