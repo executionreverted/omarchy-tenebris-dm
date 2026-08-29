@@ -25,15 +25,22 @@ required_files=(
     config/omarchy/plugins/tenebris.lock/manifest.json
     config/omarchy/plugins/tenebris.lock/Service.qml
     config/omarchy/plugins/tenebris.lock/LockView.qml
+    config/omarchy/plugins/tenebris.lock/SealClock.qml
     config/sddm/tenebris/Main.qml
+    config/sddm/tenebris/SealClock.qml
     config/sddm/tenebris/metadata.desktop
     config/sddm/tenebris/theme.conf
     config/sddm/zz-tenebris-theme.conf
-    config/sddm/zz-tenebris-autologin.conf
 )
 for path in "${required_files[@]}"; do
     [[ -f "$path" ]] || { printf 'Missing required file: %s\n' "$path" >&2; exit 1; }
 done
+
+cmp -s config/omarchy/plugins/tenebris.lock/SealClock.qml \
+    config/sddm/tenebris/SealClock.qml || {
+    printf 'Lock and SDDM seal clocks have drifted apart.\n' >&2
+    exit 1
+}
 
 [[ -s config/quickshell/tenebris-shell/dashboard-art.txt ]] || {
     printf 'Screensaver branding source is empty.\n' >&2
@@ -117,6 +124,10 @@ for (section, option), expected in cava_contract.items():
         )
 
 installer = (root / "install.sh").read_text(encoding="utf-8")
+if "config/sddm/zz-tenebris-autologin.conf" in installer:
+    raise SystemExit("Installer must never deploy an SDDM autologin override")
+if re.search(r"\b(?:chpasswd|passwd)\b", installer):
+    raise SystemExit("Installer must never modify a user password")
 array_contract = {
     "core_packages": {"cava", "curl"},
     "required_commands": {"cava", "curl", "sha256sum", "fc-scan", "fc-cache"},
@@ -155,6 +166,8 @@ for needle, purpose in installer_contract.items():
 sddm_stage_contract = {
     "background.png",
     "ArgFlahm.ttf",
+    "clock_hour_hand.png",
+    "clock_minute_hand.png",
     "frame_corner.png",
     "divider_ornate.png",
     "large_sigil.png",

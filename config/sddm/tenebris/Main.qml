@@ -9,7 +9,6 @@ Rectangle {
 
   property string currentUser: userModel.lastUser
   property bool loginFailed: false
-  property date now: new Date()
   readonly property bool compactLayout: width < 760 || height < 520
   property int sessionIndex: {
     for (var i = 0; i < sessionModel.rowCount(); i++) {
@@ -23,13 +22,6 @@ Rectangle {
   FontLoader {
     id: argorFont
     source: "ArgFlahm.ttf"
-  }
-
-  Timer {
-    interval: 1000
-    repeat: true
-    running: true
-    onTriggered: root.now = new Date()
   }
 
   Connections {
@@ -130,22 +122,12 @@ Rectangle {
       renderType: Text.NativeRendering
     }
 
-    Text {
-      anchors.horizontalCenter: parent.horizontalCenter
-      text: "Dungeon Master"
-      color: "#8B867D"
-      font.family: "Noto Serif"
-      font.pixelSize: root.compactLayout ? 9
-        : Math.max(11, Math.min(14, root.width * 0.009))
-      font.letterSpacing: root.compactLayout ? 2 : 4
-      renderType: Text.NativeRendering
-    }
   }
 
   Item {
     id: gatePanel
     width: Math.min(620, root.width - 72)
-    height: root.compactLayout ? 190 : 318
+    height: root.compactLayout ? 280 : 520
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
     anchors.verticalCenterOffset: root.compactLayout ? 15
@@ -172,27 +154,13 @@ Rectangle {
       opacity: 0.66
     }
 
-    Text {
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.top: parent.top
-      anchors.topMargin: root.compactLayout ? 72 : 119
-      text: "Enter The Black Archive"
-      color: "#CFC8BC"
-      font.family: "Noto Serif"
-      font.pixelSize: root.compactLayout ? 15
-        : Math.max(17, Math.min(22, root.width * 0.014))
-      font.bold: true
-      font.letterSpacing: 1.5
-      renderType: Text.NativeRendering
-    }
-
     Rectangle {
       id: inputField
       width: Math.min(440, parent.width - 50)
       height: root.compactLayout ? 44 : 58
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.top: parent.top
-      anchors.topMargin: root.compactLayout ? 108 : 162
+      anchors.topMargin: root.compactLayout ? 92 : 144
       color: "#D9050505"
       border.width: root.loginFailed ? 2 : 1
       border.color: root.loginFailed ? "#B51D24" : (password.text.length > 0 ? "#B8B2A7" : "#66625B")
@@ -240,7 +208,7 @@ Rectangle {
       Text {
         anchors.fill: password
         visible: password.text.length === 0
-        text: root.loginFailed ? "The seal rejects thee" : "Enter Password"
+        text: root.loginFailed ? "Authentication failed" : "Password"
         color: root.loginFailed ? "#B51D24" : "#8A867F"
         font.family: "Noto Serif"
         font.pixelSize: root.compactLayout ? 14 : 17
@@ -256,45 +224,15 @@ Rectangle {
       }
     }
 
-    Text {
+    SealClock {
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.top: inputField.bottom
-      anchors.topMargin: root.compactLayout ? 10 : 16
-      text: root.currentUser || "Bearer"
-      color: "#77736D"
-      font.family: "Noto Serif"
-      font.pixelSize: root.compactLayout ? 9 : 12
-      font.letterSpacing: 2
-      renderType: Text.NativeRendering
-    }
-  }
-
-  Column {
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.bottom: parent.bottom
-    anchors.bottomMargin: root.compactLayout ? 22
-      : Math.max(52, root.height * 0.065)
-    spacing: 1
-
-    Text {
-      anchors.horizontalCenter: parent.horizontalCenter
-      text: Qt.formatDateTime(root.now, "HH:mm")
-      color: "#D5D0C6"
-      font.family: "Noto Serif"
-      font.pixelSize: root.compactLayout ? 18
-        : Math.max(22, Math.min(30, root.width * 0.019))
-      font.letterSpacing: 3
-      renderType: Text.NativeRendering
-    }
-
-    Text {
-      anchors.horizontalCenter: parent.horizontalCenter
-      text: Qt.formatDateTime(root.now, "dddd, d MMMM")
-      color: "#77736D"
-      font.family: "Noto Serif"
-      font.pixelSize: root.compactLayout ? 9 : 12
-      font.letterSpacing: 1
-      renderType: Text.NativeRendering
+      anchors.topMargin: root.compactLayout ? 10 : 18
+      width: root.compactLayout ? 96 : 174
+      height: width + (root.compactLayout ? 30 : 42)
+      hourHandSource: "clock_hour_hand.png"
+      minuteHandSource: "clock_minute_hand.png"
+      bodyFont: "Noto Serif"
     }
   }
 

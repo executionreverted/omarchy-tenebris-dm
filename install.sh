@@ -9,7 +9,6 @@ login_screen_request="ask"
 want_ymc=false
 want_cliamp=false
 want_sddm_theme=false
-disable_sddm_autologin=false
 
 usage() {
     cat <<'EOF'
@@ -26,9 +25,8 @@ the connected displays' supported resolution and refresh-rate combinations.
   --music-clients LIST  Comma-separated ymc,cliamp; or use recommended, all,
                         or none. Interactive installs ask about each client
                         separately.
-  --login-screen MODE   Use theme, password, or none. "theme" installs the
-                        SDDM artwork without changing autologin; "password"
-                        also shows it at every boot by disabling autologin.
+  --login-screen MODE   Use theme or none. TENEBRIS can install SDDM artwork,
+                        but never changes the user's password or autologin.
 EOF
 }
 
@@ -219,9 +217,6 @@ choose_login_screen() {
         printf '\nBoot login screen:\n'
         if confirm_choice '  Install the TENEBRIS SDDM theme? [Y/n] ' yes; then
             want_sddm_theme=true
-            if confirm_choice '  Require password login at boot? [y/N] ' no; then
-                disable_sddm_autologin=true
-            fi
         fi
         return
     fi
@@ -229,10 +224,6 @@ choose_login_screen() {
     case "$normalized" in
         none|"") return ;;
         theme) want_sddm_theme=true ;;
-        password)
-            want_sddm_theme=true
-            disable_sddm_autologin=true
-            ;;
         *)
             printf 'Unknown login screen mode: %s\n' "$login_screen_request" >&2
             return 1
@@ -334,7 +325,7 @@ fi
 # Authenticate before backing up or replacing user configuration so a failed
 # SDDM privilege prompt cannot leave a half-installed desktop behind.
 if [[ "$need_sddm_privilege" == true ]]; then
-    printf 'SDDM login changes require administrator access.\n'
+    printf 'SDDM theme artwork requires administrator access.\n'
     sudo -v
 fi
 
@@ -724,7 +715,15 @@ if [[ "$want_sddm_theme" == true ]]; then
     printf 'Installing the TENEBRIS SDDM login theme (administrator access required)...\n'
     record_system_path sddm-theme "$sddm_theme_dir"
     record_system_path sddm-theme-config "$sddm_theme_config"
-    record_system_path sddm-autologin "$sddm_autologin_config"
+
+    # TENEBRIS releases before this safeguard could install an override that
+    # disabled Omarchy's existing autologin. Retire that managed override and
+    # restore the exact pre-TENEBRIS state, but never create a new one.
+    if [[ -f "$active_state/managed-sddm-autologin" ]]; then
+        printf 'Restoring the existing SDDM autologin policy...\n'
+        restore_system_path_now sddm-autologin "$sddm_autologin_config"
+        rm -f "$active_state/managed-sddm-autologin"
+    fi
 
     sddm_stage="$(mktemp -d)"
     cp -a "$repo_dir/config/sddm/tenebris/." "$sddm_stage/"
@@ -737,20 +736,15 @@ if [[ "$want_sddm_theme" == true ]]; then
         "$sddm_stage/divider_ornate.png"
     install -m 644 "$repo_dir/config/quickshell/tenebris-shell/assets/large_sigil.png" \
         "$sddm_stage/large_sigil.png"
+    install -m 644 "$repo_dir/config/quickshell/tenebris-shell/assets/clock_hour_hand.png" \
+        "$sddm_stage/clock_hour_hand.png"
+    install -m 644 "$repo_dir/config/quickshell/tenebris-shell/assets/clock_minute_hand.png" \
+        "$sddm_stage/clock_minute_hand.png"
     deploy_system_tree "$sddm_stage" "$sddm_theme_dir" sddm-theme-current
     deploy_system_file "$repo_dir/config/sddm/zz-tenebris-theme.conf" \
         "$sddm_theme_config" sddm-theme-config-current
     rm -r -- "$sddm_stage"
     touch "$active_state/managed-sddm-theme"
-
-    if [[ "$disable_sddm_autologin" == true ]]; then
-        deploy_system_file "$repo_dir/config/sddm/zz-tenebris-autologin.conf" \
-            "$sddm_autologin_config" sddm-autologin-current
-        touch "$active_state/managed-sddm-autologin"
-    elif [[ -f "$active_state/managed-sddm-autologin" ]]; then
-        restore_system_path_now sddm-autologin "$sddm_autologin_config"
-        rm -f "$active_state/managed-sddm-autologin"
-    fi
 elif [[ -f "$active_state/managed-sddm-theme" ]]; then
     printf 'Restoring the previous SDDM login theme (administrator access required)...\n'
     restore_system_path_now sddm-autologin "$sddm_autologin_config"

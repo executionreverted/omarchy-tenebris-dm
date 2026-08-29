@@ -37,6 +37,20 @@ reject_version() {
 reject_version "3.9.9-1"
 reject_version "5.0.0-1"
 
+password_home="$test_root/password-mode"
+mkdir -p "$password_home"
+if output="$(PATH="$mock_bin:/usr/bin:/bin" HOME="$password_home" \
+        TENEBRIS_FAKE_OMARCHY_VERSION="4.0.0-1" \
+        "$repo_dir/install.sh" --skip-packages --login-screen password 2>&1)"; then
+    printf 'Installer accepted the removed password-login mode.\n' >&2
+    exit 1
+fi
+[[ "$output" == *"Unknown login screen mode: password"* ]] || {
+    printf 'Unexpected password-mode rejection:\n%s\n' "$output" >&2
+    exit 1
+}
+assert_untouched "$password_home"
+
 missing_home="$test_root/missing"
 empty_bin="$test_root/empty-bin"
 mkdir -p "$missing_home" "$empty_bin"

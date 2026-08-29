@@ -16,7 +16,6 @@ Item {
   property bool loadBackground: true
   property string passwordText: ""
   property bool syncingPasswordText: false
-  property date now: new Date()
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string assetRoot: home + "/.config/quickshell/tenebris-shell/assets"
@@ -59,13 +58,6 @@ Item {
   Component.onCompleted: {
     syncPasswordText()
     if (inputEnabled) Qt.callLater(forcePasswordFocus)
-  }
-
-  Timer {
-    interval: 1000
-    repeat: true
-    running: root.loadBackground
-    onTriggered: root.now = new Date()
   }
 
   Rectangle {
@@ -171,22 +163,12 @@ Item {
         renderType: Text.NativeRendering
       }
 
-      Text {
-        anchors.horizontalCenter: parent.horizontalCenter
-        text: "Dungeon Master"
-        color: "#8B867D"
-        font.family: root.bodyFont
-        font.pixelSize: root.compactLayout ? 9
-          : Math.max(11, Math.min(14, root.width * 0.009))
-        font.letterSpacing: root.compactLayout ? 2 : 4
-        renderType: Text.NativeRendering
-      }
     }
 
     Item {
       id: gatePanel
       width: Math.min(620, root.width - 72)
-      height: root.compactLayout ? 190 : 300
+      height: root.compactLayout ? 280 : 520
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.verticalCenter: parent.verticalCenter
       anchors.verticalCenterOffset: root.compactLayout ? 15
@@ -213,27 +195,13 @@ Item {
         opacity: 0.66
       }
 
-      Text {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: root.compactLayout ? 72 : 119
-        text: "The Gate Is Sealed"
-        color: "#CFC8BC"
-        font.family: root.bodyFont
-        font.pixelSize: root.compactLayout ? 15
-          : Math.max(17, Math.min(22, root.width * 0.014))
-        font.weight: Font.DemiBold
-        font.letterSpacing: 1.5
-        renderType: Text.NativeRendering
-      }
-
       Rectangle {
         id: inputField
         width: root.fieldWidth
         height: root.fieldHeight
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: root.compactLayout ? 108 : 162
+        anchors.topMargin: root.compactLayout ? 92 : 144
         color: "#D9050505"
         border.width: root.errorState ? 2 : 1
         border.color: root.errorState ? Color.lock.textError
@@ -301,7 +269,7 @@ Item {
           anchors.fill: passwordInput
           visible: passwordInput.text.length === 0
           text: root.authenticatingPassword ? "Verifying…"
-            : (root.errorState ? "The seal rejects thee" : "Enter Password")
+            : (root.errorState ? "Authentication failed" : "Password")
           color: root.errorState ? Color.lock.textError : "#8A867F"
           font.family: root.bodyFont
           font.pixelSize: root.compactLayout ? 14 : 17
@@ -323,46 +291,15 @@ Item {
         }
       }
 
-      Text {
+      SealClock {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: inputField.bottom
-        anchors.topMargin: root.compactLayout ? 10 : 16
-        text: Quickshell.env("USER") || Quickshell.env("LOGNAME") || "Bearer"
-        color: "#77736D"
-        font.family: root.bodyFont
-        font.pixelSize: root.compactLayout ? 9 : 12
-        font.letterSpacing: 2
-        renderType: Text.NativeRendering
-      }
-    }
-
-    Column {
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.bottom: parent.bottom
-      anchors.bottomMargin: root.compactLayout ? 22
-        : Math.max(52, root.height * 0.065)
-      spacing: 1
-
-      Text {
-        anchors.horizontalCenter: parent.horizontalCenter
-        text: Qt.formatDateTime(root.now, "HH:mm")
-        color: "#D5D0C6"
-        font.family: root.bodyFont
-        font.pixelSize: root.compactLayout ? 18
-          : Math.max(22, Math.min(30, root.width * 0.019))
-        font.weight: Font.Light
-        font.letterSpacing: 3
-        renderType: Text.NativeRendering
-      }
-
-      Text {
-        anchors.horizontalCenter: parent.horizontalCenter
-        text: Qt.formatDateTime(root.now, "dddd, d MMMM")
-        color: "#77736D"
-        font.family: root.bodyFont
-        font.pixelSize: root.compactLayout ? 9 : 12
-        font.letterSpacing: 1
-        renderType: Text.NativeRendering
+        anchors.topMargin: root.compactLayout ? 10 : 18
+        width: root.compactLayout ? 96 : 174
+        height: width + (root.compactLayout ? 30 : 42)
+        hourHandSource: root.asset("clock_hour_hand.png")
+        minuteHandSource: root.asset("clock_minute_hand.png")
+        bodyFont: root.bodyFont
       }
     }
   }

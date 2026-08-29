@@ -93,14 +93,12 @@ refresh-rate combinations. **Keep current settings** is the default. The
 selected profile preserves that output's existing scale, position and
 transform, and is removed again by `./uninstall.sh`.
 
-When SDDM is present, the installer also offers the TENEBRIS login theme. Its
-default choice keeps Omarchy's current autologin behavior; choosing password
-login disables autologin so the themed greeter appears at every boot. Both
-changes are backed up and reversible. Scripted installs can choose explicitly:
+When SDDM is present, the installer also offers the TENEBRIS login theme. This
+is artwork only: TENEBRIS never changes the user's password or Omarchy's
+existing autologin policy. Scripted installs can choose explicitly:
 
 ```bash
 ./install.sh --login-screen theme     # install art; preserve autologin
-./install.sh --login-screen password  # install art; require login at boot
 ./install.sh --login-screen none      # leave SDDM untouched
 ```
 
