@@ -5,7 +5,6 @@ Item {
 
     property date now: new Date()
     property bool use24Hour: true
-    property real breath: 0
     property real surge: 0
 
     readonly property bool hovered: sealMouse.containsMouse || readoutMouse.containsMouse
@@ -42,13 +41,6 @@ Item {
         onTriggered: root.now = new Date()
     }
 
-    SequentialAnimation on breath {
-        running: root.visible
-        loops: Animation.Infinite
-        NumberAnimation { from: 0; to: 1; duration: 1900; easing.type: Easing.InOutSine }
-        NumberAnimation { from: 1; to: 0; duration: 1900; easing.type: Easing.InOutSine }
-    }
-
     SequentialAnimation {
         id: surgeAnimation
         NumberAnimation {
@@ -76,17 +68,16 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         width: root.dialSize
         height: width
-        scale: 1 + root.surge * 0.018
 
         Rectangle {
             anchors.centerIn: parent
-            width: parent.width - 2 + root.breath * 5
+            width: parent.width - 2
             height: width
             radius: width * 0.5
             color: "#0D000000"
             border.color: root.hovered ? TenebrisTheme.border : TenebrisTheme.borderDim
             border.width: 1
-            opacity: 0.48 + root.breath * 0.12
+            opacity: 0.54
 
             Behavior on border.color {
                 ColorAnimation { duration: TenebrisTheme.motionFast }
@@ -95,7 +86,7 @@ Item {
 
         Rectangle {
             anchors.centerIn: parent
-            width: parent.width * (0.70 + root.surge * 0.22)
+            width: parent.width * 0.70
             height: width
             radius: width * 0.5
             color: "transparent"
@@ -252,7 +243,7 @@ Item {
         Rectangle {
             id: pivotHub
             anchors.centerIn: parent
-            width: 18 + root.surge * 3
+            width: 18
             height: width
             radius: width * 0.5
             color: "#E50B0B0B"

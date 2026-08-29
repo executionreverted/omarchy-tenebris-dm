@@ -30,13 +30,14 @@ PanelWindow {
     }
 
     onOpenChanged: {
-        if (root.open)
+        if (root.open) {
             root.browse(root.initialPath);
+            Qt.callLater(function() { keyCatcher.forceActiveFocus(); });
+        }
     }
 
     visible: root.open
     aboveWindows: true
-    focusable: false
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
 
@@ -49,7 +50,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "tenebris-folder-picker"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
     HyprlandFocusGrab {
         active: root.open
@@ -80,6 +81,20 @@ PanelWindow {
         onExited: root.loading = false
     }
 
+    Item {
+        id: keyCatcher
+        anchors.fill: parent
+        focus: true
+
+        Keys.onEscapePressed: root.closeRequested()
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Q && event.modifiers === Qt.NoModifier) {
+                root.closeRequested();
+                event.accepted = true;
+            }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "#B8000000"
@@ -106,12 +121,14 @@ PanelWindow {
         }
 
         Column {
+            id: pickerColumn
             anchors.fill: parent
             spacing: 9
 
             Row {
+                id: quickNav
                 width: parent.width
-                height: 36
+                height: 32
                 spacing: 6
 
                 Repeater {
@@ -132,17 +149,30 @@ PanelWindow {
                         opacity: modelData.enabled ? 1 : 0.35
 
                         Row {
+                            id: quickContent
                             anchors.centerIn: parent
+                            height: parent.height
                             spacing: 7
 
-                            Text {
-                                text: modelData.glyph
-                                color: TenebrisTheme.silver
-                                font.family: TenebrisTheme.monoFont
-                                font.pixelSize: 12
+                            Item {
+                                width: quickGlyph.implicitWidth
+                                height: parent.height
+
+                                Text {
+                                    id: quickGlyph
+                                    anchors.centerIn: parent
+                                    anchors.verticalCenterOffset: -1
+                                    text: modelData.glyph
+                                    color: TenebrisTheme.silver
+                                    font.family: TenebrisTheme.monoFont
+                                    font.pixelSize: 12
+                                }
                             }
 
                             Text {
+                                id: quickLabel
+                                height: parent.height
+                                verticalAlignment: Text.AlignVCenter
                                 text: modelData.label
                                 color: TenebrisTheme.text
                                 font.family: TenebrisTheme.contentFont
@@ -164,6 +194,7 @@ PanelWindow {
             }
 
             Rectangle {
+                id: pathBar
                 width: parent.width
                 height: 34
                 color: "#A00B0B0A"
@@ -184,8 +215,11 @@ PanelWindow {
             }
 
             Item {
+                id: folderArea
                 width: parent.width
-                height: parent.height - 124
+                height: Math.max(0, pickerColumn.height
+                    - quickNav.height - pathBar.height - footerRow.height
+                    - pickerColumn.spacing * 3 - 8)
 
                 Text {
                     visible: !root.loading && root.folders.length === 0
@@ -242,6 +276,9 @@ PanelWindow {
                             anchors.left: parent.left
                             anchors.leftMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenterOffset: -1
+                            height: parent.height
+                            verticalAlignment: Text.AlignVCenter
                             text: "󰉋"
                             color: folderMouse.containsMouse
                                 ? TenebrisTheme.bone : TenebrisTheme.silver
@@ -255,6 +292,8 @@ PanelWindow {
                             anchors.right: arrow.left
                             anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
+                            height: parent.height
+                            verticalAlignment: Text.AlignVCenter
                             text: modelData.name
                             color: folderMouse.containsMouse
                                 ? TenebrisTheme.bone : TenebrisTheme.text
@@ -268,6 +307,9 @@ PanelWindow {
                             anchors.right: parent.right
                             anchors.rightMargin: 13
                             anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenterOffset: -1
+                            height: parent.height
+                            verticalAlignment: Text.AlignVCenter
                             text: "›"
                             color: TenebrisTheme.textMuted
                             font.family: TenebrisTheme.uiFont
@@ -299,6 +341,7 @@ PanelWindow {
             }
 
             Row {
+                id: footerRow
                 anchors.right: parent.right
                 height: 34
                 spacing: 7

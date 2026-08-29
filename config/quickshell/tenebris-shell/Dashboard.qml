@@ -469,13 +469,35 @@ PanelWindow {
         root.persistWebSettings();
     }
 
+    function sortedProjects(items, sortMode) {
+        const sorted = Array.from(items || []);
+        sorted.sort(function(left, right) {
+            const leftName = String(left.name || "").toLocaleLowerCase();
+            const rightName = String(right.name || "").toLocaleLowerCase();
+            let order = leftName < rightName ? -1 : (leftName > rightName ? 1 : 0);
+
+            if (!String(sortMode).startsWith("name-")) {
+                const leftModified = Number(left.modified || 0);
+                const rightModified = Number(right.modified || 0);
+                if (leftModified !== rightModified)
+                    order = leftModified < rightModified ? -1 : 1;
+            }
+
+            return String(sortMode).endsWith("-desc") ? -order : order;
+        });
+        return sorted;
+    }
+
     function setProjectSort(value) {
         const selected = String(value || "modified-desc");
         if (selected === root.projectSort)
             return;
         root.projectSort = selected;
+        root.projects = root.sortedProjects(root.projects, selected);
         root.projectsRevision = "";
         root.persistWebSettings();
+        if (!statePoll.running)
+            statePoll.running = true;
     }
 
     function setWebEnabled(value) {
@@ -1578,7 +1600,7 @@ PanelWindow {
             ArchiveFrame {
                 width: parent.width
                 height: root.compactHeight ? 160 : 190
-                title: "SEALED CORRESPONDENCE"
+                title: "RELAY"
                 subtitle: "LINK"
                 textured: !root.cleanMode
 
