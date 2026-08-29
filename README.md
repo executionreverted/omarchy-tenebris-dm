@@ -11,10 +11,12 @@ idle spider-web scene. Workspaces 2–10 stay available for normal use.
 
 [▶ Watch the TENEBRIS showcase with desktop audio](media/tenebris-preview.mp4)
 
-The rice also includes a custom top bar and Omarchy menu, a matching lock
-screen, wallpapers, GTK styling, terminal colors, Obsidian colors and optional
-music integrations. Hardware settings are left untouched unless a display
-profile is explicitly selected during installation.
+GitHub player not streaming? [Watch the showcase on YouTube](https://www.youtube.com/watch?v=OBWsP2DxDxQ).
+
+The rice also includes a custom top bar and Omarchy menu, matching lock and
+optional login screens, wallpapers, GTK styling, terminal colors, Obsidian
+colors and optional music integrations. Hardware settings are left untouched
+unless a display profile is explicitly selected during installation.
 
 > [!WARNING]
 > **TENEBRIS is experimental.** The installer backs up every user configuration
@@ -91,6 +93,17 @@ refresh-rate combinations. **Keep current settings** is the default. The
 selected profile preserves that output's existing scale, position and
 transform, and is removed again by `./uninstall.sh`.
 
+When SDDM is present, the installer also offers the TENEBRIS login theme. Its
+default choice keeps Omarchy's current autologin behavior; choosing password
+login disables autologin so the themed greeter appears at every boot. Both
+changes are backed up and reversible. Scripted installs can choose explicitly:
+
+```bash
+./install.sh --login-screen theme     # install art; preserve autologin
+./install.sh --login-screen password  # install art; require login at boot
+./install.sh --login-screen none      # leave SDDM untouched
+```
+
 The installer then asks about YMC and cliamp separately; both are recommended.
 No client is installed without its own answer. Scripted installs can make the
 same choice explicitly:
@@ -116,9 +129,13 @@ It installs or updates:
 - `~/.config/quickshell/tenebris-shell`
 - `~/.config/omarchy/themes/tenebris`
 - `~/.config/omarchy/plugins/tenebris.menu`
+- `~/.config/omarchy/plugins/tenebris.lock`
+- `~/.config/omarchy/branding/screensaver.txt`
 - marked TENEBRIS blocks in Hyprland and GTK user configuration
 - the synced Omarchy theme in existing Obsidian vaults
 - optional player themes/services only when their clients are present
+- optionally, the SDDM theme under `/usr/local/share/sddm/themes/tenebris` and
+  reversible TENEBRIS overrides under `/etc/sddm.conf.d`
 
 Backups and restore state live in `~/.local/state/tenebris-omarchy/`.
 
@@ -161,7 +178,9 @@ The dashboard terminal artwork is plain text and can be edited at:
 ```
 
 Right-click the Black Archive seal to open the web controls. Use Omarchy's
-usual wallpaper shortcut to rotate the two included backgrounds.
+usual wallpaper shortcut to rotate the two included backgrounds. The default
+is `00-dungeon-gate.png`; `01-cathedral-vault.png` is the alternate. Their
+canonical copies live in [`assets/wallpapers`](assets/wallpapers).
 
 The shipped **Web of Silence** profile uses density `0.95`, wind `1.75`,
 motion `2.0`, 30 FPS at `0.75×` render scale, a 90-second idle delay and a
@@ -173,8 +192,9 @@ motion `2.0`, 30 FPS at `0.75×` render scale, a 90-second idle delay and a
 ./uninstall.sh
 ```
 
-The uninstaller restores the previous theme, menu, stock-bar state, GTK blocks,
-player configuration and service state. It asks separately whether YMC and
+The uninstaller restores the previous theme, menu, lock provider, screensaver
+branding, SDDM/autologin state, stock-bar state, GTK blocks, player
+configuration and service state. It asks separately whether YMC and
 cliamp should also be removed when detected; the default is to keep each one.
 Music login, library and credential data are always preserved.
 Removed TENEBRIS files and local player binaries are retained in the state

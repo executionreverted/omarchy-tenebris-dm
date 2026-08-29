@@ -7,21 +7,37 @@ cd "$repo_dir"
 required_files=(
     README.md AGENTS.md LICENSE docs/MARKETPLACE.md install.sh uninstall.sh
     assets/fonts/ArgFlahm.ttf assets/fonts/Argor.txt
+    assets/wallpapers/00-dungeon-gate.png
+    assets/wallpapers/01-cathedral-vault.png
     media/tenebris-preview.jpg media/tenebris-preview.mp4
     config/quickshell/tenebris-shell/shell.qml
     config/quickshell/tenebris-shell/settings.json
     config/quickshell/tenebris-shell/FolderPickerOverlay.qml
     config/quickshell/tenebris-shell/cava-tenebris.conf
+    config/quickshell/tenebris-shell/dashboard-art.txt
     config/quickshell/tenebris-shell/folder-browser.py
     config/quickshell/tenebris-shell/place-dashboard-terminal.py
     config/quickshell/tenebris-shell/shaders/spiderweb.frag
     config/quickshell/tenebris-shell/shaders/spiderweb.frag.qsb
     config/omarchy/themes/tenebris/colors.toml
     config/omarchy/plugins/tenebris.menu/manifest.json
+    config/omarchy/plugins/tenebris.lock/manifest.json
+    config/omarchy/plugins/tenebris.lock/Service.qml
+    config/omarchy/plugins/tenebris.lock/LockView.qml
+    config/sddm/tenebris/Main.qml
+    config/sddm/tenebris/metadata.desktop
+    config/sddm/tenebris/theme.conf
+    config/sddm/zz-tenebris-theme.conf
+    config/sddm/zz-tenebris-autologin.conf
 )
 for path in "${required_files[@]}"; do
     [[ -f "$path" ]] || { printf 'Missing required file: %s\n' "$path" >&2; exit 1; }
 done
+
+[[ -s config/quickshell/tenebris-shell/dashboard-art.txt ]] || {
+    printf 'Screensaver branding source is empty.\n' >&2
+    exit 1
+}
 
 if command -v fc-scan >/dev/null; then
     font_family="$(fc-scan --format '%{family}\n' assets/fonts/ArgFlahm.ttf 2>/dev/null)"
@@ -57,7 +73,9 @@ fi
 
 if command -v qmllint >/dev/null; then
     qmllint config/quickshell/tenebris-shell/*.qml \
-        config/omarchy/plugins/tenebris.menu/*.qml
+        config/omarchy/plugins/tenebris.menu/*.qml \
+        config/omarchy/plugins/tenebris.lock/*.qml \
+        config/sddm/tenebris/Main.qml
 fi
 
 python3 - "$repo_dir" <<'PY'
@@ -74,6 +92,11 @@ from pathlib import Path
 root = Path(sys.argv[1])
 shell = root / "config/quickshell/tenebris-shell"
 plugin = root / "config/omarchy/plugins/tenebris.menu"
+lock_plugin = root / "config/omarchy/plugins/tenebris.lock"
+
+lock_manifest = json.loads((lock_plugin / "manifest.json").read_text(encoding="utf-8"))
+if lock_manifest.get("omarchy", {}).get("clonedFrom") != "omarchy.lock":
+    raise SystemExit("TENEBRIS lock must remain a clone of omarchy.lock")
 
 cava = configparser.ConfigParser()
 cava.read(shell / "cava-tenebris.conf", encoding="utf-8")
@@ -115,6 +138,38 @@ for client in ("YMC", "cliamp"):
     if f"Remove {client}?" not in uninstaller:
         raise SystemExit(f"Uninstaller does not ask separately about {client}")
 
+installer_contract = {
+    "assets/wallpapers/00-dungeon-gate.png": "default desktop wallpaper",
+    "assets/wallpapers/01-cathedral-vault.png": "alternate desktop wallpaper",
+    "config/omarchy/plugins/tenebris.lock": "TENEBRIS lock plugin",
+    "config/sddm/tenebris": "optional SDDM login theme",
+    "--login-screen": "SDDM install mode choice",
+    "00-dungeon-gate.png": "selected default wallpaper",
+    "dashboard-art.txt": "screensaver branding",
+}
+for needle, purpose in installer_contract.items():
+    if needle not in installer:
+        raise SystemExit(f"Installer is missing {purpose}: {needle}")
+
+sddm_stage_contract = {
+    "background.png",
+    "ArgFlahm.ttf",
+    "frame_corner.png",
+    "divider_ornate.png",
+    "large_sigil.png",
+}
+missing_sddm_assets = sorted(
+    asset for asset in sddm_stage_contract if f'"$sddm_stage/{asset}"' not in installer
+)
+if missing_sddm_assets:
+    raise SystemExit(
+        "Installer does not stage SDDM assets: " + ", ".join(missing_sddm_assets)
+    )
+
+readme = (root / "README.md").read_text(encoding="utf-8")
+if "https://www.youtube.com/watch?v=OBWsP2DxDxQ" not in readme:
+    raise SystemExit("README is missing the YouTube showcase fallback")
+
 for path in root.rglob("*.py"):
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
@@ -153,6 +208,15 @@ for path in plugin.glob("*.qml"):
         if not (plugin / relative).is_file():
             missing.append(f"{path.relative_to(root)} -> {relative}")
 
+lock_asset_pattern = re.compile(r'asset\("([^"\n]+\.png)"\)')
+for path in lock_plugin.glob("*.qml"):
+    text = path.read_text(encoding="utf-8")
+    for relative in lock_asset_pattern.findall(text):
+        if not (shell / "assets" / relative).is_file():
+            missing.append(
+                f"{path.relative_to(root)} -> config/quickshell/tenebris-shell/assets/{relative}"
+            )
+
 if missing:
     raise SystemExit("Missing raster references:\n" + "\n".join(missing))
 
@@ -175,6 +239,7 @@ PY
 
 if command -v omarchy >/dev/null; then
     omarchy plugin validate config/omarchy/plugins/tenebris.menu >/dev/null
+    omarchy plugin validate config/omarchy/plugins/tenebris.lock >/dev/null
 fi
 
 printf 'TENEBRIS validation passed.\n'

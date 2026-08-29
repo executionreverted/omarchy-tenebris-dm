@@ -8,10 +8,13 @@ user account and keep the public repository free of machine-specific data.
 
 - `config/quickshell/tenebris-shell/` — dashboard, top bar, player overlay,
   web screensaver, helpers and runtime raster assets
-- `config/omarchy/themes/tenebris/` — Omarchy palette, wallpapers, lock assets
-  and application theme fragments
+- `config/omarchy/themes/tenebris/` — Omarchy palette and application theme
+  fragments; wallpapers are staged from `assets/wallpapers/` during install
 - `config/omarchy/plugins/tenebris.menu/` — cloned Omarchy menu presentation;
   its public plugin ID is `tenebris.menu`
+- `config/omarchy/plugins/tenebris.lock/` — cloned Omarchy lock provider;
+  preserve the stock PAM/session-lock behavior in `Service.qml`
+- `config/sddm/tenebris/` — optional SDDM greeter installed under `/usr/local`
 - `config/gtk-3.0/` and `config/gtk-4.0/` — snippets inserted between markers
 - `hypr/tenebris/` — Lua snippets inserted into the user's Omarchy config
 - `systemd/user/` — optional YMC and cliamp companions
@@ -61,6 +64,13 @@ cd omarchy-tenebris-dm
 - Do not overwrite player credentials.
 - Install the bundled Argor font only after verifying its family, preserve its
   author notice, and restore the previous target on uninstall.
+- Keep the lock plugin declared as a clone of `omarchy.lock`; preserve PAM,
+  fingerprint and session-lock behavior when changing its presentation.
+- SDDM is optional. Write only the TENEBRIS theme under `/usr/local/share` and
+  its named overrides under `/etc/sddm.conf.d`; back up both, never restart
+  SDDM during install, and restore the previous autologin/theme state.
+- Deploy `dashboard-art.txt` as the backed-up Omarchy screensaver branding;
+  a missing branding file makes the stock screensaver helper restart-loop.
 - Uninstall must restore the previous theme, menu, stock-bar flag, files and
   service enable/active state. Core runtime packages remain; optional music
   clients may be removed only after a separate explicit confirmation for each.

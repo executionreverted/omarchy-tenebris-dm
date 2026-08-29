@@ -5,13 +5,16 @@ skip_packages=false
 display_mode_request="ask"
 display_output_request=""
 music_clients_request="ask"
+login_screen_request="ask"
 want_ymc=false
 want_cliamp=false
+want_sddm_theme=false
+disable_sddm_autologin=false
 
 usage() {
     cat <<'EOF'
 Usage: ./install.sh [--skip-packages] [--display-mode MODE] [--display-output NAME]
-                    [--music-clients LIST]
+                    [--music-clients LIST] [--login-screen MODE]
 
 Installs TENEBRIS for the current Omarchy user. By default, missing core
 packages are installed through `omarchy pkg add`. Interactive installs offer
@@ -23,6 +26,9 @@ the connected displays' supported resolution and refresh-rate combinations.
   --music-clients LIST  Comma-separated ymc,cliamp; or use recommended, all,
                         or none. Interactive installs ask about each client
                         separately.
+  --login-screen MODE   Use theme, password, or none. "theme" installs the
+                        SDDM artwork without changing autologin; "password"
+                        also shows it at every boot by disabling autologin.
 EOF
 }
 
@@ -57,6 +63,15 @@ while (( $# > 0 )); do
             ;;
         --music-clients=*)
             music_clients_request="${1#*=}"
+            shift
+            ;;
+        --login-screen)
+            [[ $# -ge 2 ]] || { printf '%s\n' '--login-screen requires a value.' >&2; exit 2; }
+            login_screen_request="$2"
+            shift 2
+            ;;
+        --login-screen=*)
+            login_screen_request="${1#*=}"
             shift
             ;;
         -h|--help)
@@ -187,6 +202,51 @@ choose_music_clients() {
 
 choose_music_clients
 
+choose_login_screen() {
+    local normalized
+
+    normalized="${login_screen_request,,}"
+    if [[ "$normalized" == ask ]]; then
+        if [[ ! -t 0 || ! -t 1 ]]; then
+            printf 'Login screen: non-interactive install, leaving SDDM unchanged.\n'
+            return
+        fi
+        if ! command -v sddm >/dev/null; then
+            printf 'Login screen: SDDM was not found; skipping the boot theme.\n'
+            return
+        fi
+
+        printf '\nBoot login screen:\n'
+        if confirm_choice '  Install the TENEBRIS SDDM theme? [Y/n] ' yes; then
+            want_sddm_theme=true
+            if confirm_choice '  Require password login at boot? [y/N] ' no; then
+                disable_sddm_autologin=true
+            fi
+        fi
+        return
+    fi
+
+    case "$normalized" in
+        none|"") return ;;
+        theme) want_sddm_theme=true ;;
+        password)
+            want_sddm_theme=true
+            disable_sddm_autologin=true
+            ;;
+        *)
+            printf 'Unknown login screen mode: %s\n' "$login_screen_request" >&2
+            return 1
+            ;;
+    esac
+
+    if [[ "$want_sddm_theme" == true ]] && ! command -v sddm >/dev/null; then
+        printf 'TENEBRIS login theming requires an existing SDDM installation.\n' >&2
+        return 1
+    fi
+}
+
+choose_login_screen
+
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 state_root="$HOME/.local/state/tenebris-omarchy"
 active_state="$state_root/active"
@@ -199,15 +259,20 @@ mkdir -p "$HOME/Projects"
 shell_dir="$HOME/.config/quickshell/tenebris-shell"
 theme_dir="$HOME/.config/omarchy/themes/tenebris"
 menu_plugin_dir="$HOME/.config/omarchy/plugins/tenebris.menu"
+lock_plugin_dir="$HOME/.config/omarchy/plugins/tenebris.lock"
 gtk4_file="$HOME/.config/gtk-4.0/gtk.css"
 gtk3_file="$HOME/.config/gtk-3.0/gtk.css"
 cliamp_theme_file="$HOME/.config/cliamp/themes/tenebris.toml"
 ymc_unit_file="$HOME/.config/systemd/user/tenebris-ymc.service"
 cliamp_unit_file="$HOME/.config/systemd/user/tenebris-cliamp.service"
+screensaver_branding_file="$HOME/.config/omarchy/branding/screensaver.txt"
 bar_off_file="$HOME/.local/state/omarchy/toggles/bar-off"
 title_font_file="$HOME/.local/share/fonts/tenebris/ArgFlahm.ttf"
 ymc_binary_file="$HOME/.local/bin/youtube-music-cli"
 ymc_alias_file="$HOME/.local/bin/ymc"
+sddm_theme_dir="/usr/local/share/sddm/themes/tenebris"
+sddm_theme_config="/etc/sddm.conf.d/zz-tenebris-theme.conf"
+sddm_autologin_config="/etc/sddm.conf.d/zz-tenebris-autologin.conf"
 cliamp_preinstalled=false
 command -v cliamp >/dev/null && cliamp_preinstalled=true
 
@@ -231,6 +296,12 @@ required_commands=(
     tmux xdg-terminal-exec systemctl git xdg-user-dir btop nautilus curl
     sha256sum fc-scan fc-cache
 )
+need_sddm_privilege=false
+if [[ "$want_sddm_theme" == true || -f "$active_state/managed-sddm-theme" \
+        || -f "$active_state/managed-sddm-autologin" ]]; then
+    required_commands+=(sudo)
+    need_sddm_privilege=true
+fi
 missing=()
 for command_name in "${required_commands[@]}"; do
     command -v "$command_name" >/dev/null || missing+=("$command_name")
@@ -258,6 +329,13 @@ fi
 if [[ "$want_cliamp" == true ]] && ! command -v cliamp >/dev/null; then
     printf 'cliamp is missing. Run without --skip-packages or install it manually.\n' >&2
     exit 1
+fi
+
+# Authenticate before backing up or replacing user configuration so a failed
+# SDDM privilege prompt cannot leave a half-installed desktop behind.
+if [[ "$need_sddm_privilege" == true ]]; then
+    printf 'SDDM login changes require administrator access.\n'
+    sudo -v
 fi
 
 selected_display_output=""
@@ -408,9 +486,11 @@ record_service_state() {
 record_path shell "$shell_dir"
 record_path theme "$theme_dir"
 record_path menu-plugin "$menu_plugin_dir"
+record_path lock-plugin "$lock_plugin_dir"
 record_path cliamp-theme "$cliamp_theme_file"
 record_path ymc-unit "$ymc_unit_file"
 record_path cliamp-unit "$cliamp_unit_file"
+record_path screensaver-branding "$screensaver_branding_file"
 record_path stock-bar-state "$bar_off_file"
 record_path title-font "$title_font_file"
 record_service_state tenebris-ymc.service ymc-unit
@@ -490,6 +570,16 @@ if [[ ! -f "$active_state/previous-menu" ]]; then
     printf '%s\n' "${previous_menu:-omarchy.menu}" >"$active_state/previous-menu"
 fi
 
+if [[ ! -f "$active_state/previous-lock" ]]; then
+    previous_lock="$(omarchy plugin list --json 2>/dev/null | jq -r '
+        map(select(.enabled and (.id == "omarchy.lock" or .clonedFrom == "omarchy.lock")))
+        | (map(select(.clonedFrom == "omarchy.lock"))[0].id
+            // map(select(.id == "omarchy.lock"))[0].id
+            // "omarchy.lock")
+    ')"
+    printf '%s\n' "${previous_lock:-omarchy.lock}" >"$active_state/previous-lock"
+fi
+
 if [[ ! -f "$active_state/previous-background" ]]; then
     readlink -f "$HOME/.local/state/omarchy/current/background" \
         >"$active_state/previous-background" 2>/dev/null || : >"$active_state/previous-background"
@@ -565,10 +655,109 @@ deploy_file() {
     install -m 644 "$source" "$target"
 }
 
+record_system_path() {
+    local key="$1" target="$2" state_dir="$active_state/system-original"
+    [[ -f "$state_dir/$key.state" ]] && return
+    mkdir -p "$state_dir"
+    if sudo test -e "$target" || sudo test -L "$target"; then
+        printf '%s\n' present >"$state_dir/$key.state"
+        sudo cp -a "$target" "$state_dir/$key"
+    else
+        printf '%s\n' absent >"$state_dir/$key.state"
+    fi
+}
+
+deploy_system_tree() {
+    local source="$1" target="$2" key="$3"
+    sudo install -d -m 755 "$(dirname "$target")"
+    if sudo test -e "$target" || sudo test -L "$target"; then
+        sudo mv "$target" "$replaced_dir/$key"
+    fi
+    sudo install -d -m 755 "$target"
+    sudo cp -aL "$source/." "$target/"
+}
+
+deploy_system_file() {
+    local source="$1" target="$2" key="$3"
+    sudo install -d -m 755 "$(dirname "$target")"
+    if sudo test -e "$target" || sudo test -L "$target"; then
+        sudo mv "$target" "$replaced_dir/$key"
+    fi
+    sudo install -m 644 "$source" "$target"
+}
+
+restore_system_path_now() {
+    local key="$1" target="$2" state_dir="$active_state/system-original" state
+    [[ -f "$state_dir/$key.state" ]] || return
+    state="$(cat "$state_dir/$key.state")"
+    if sudo test -e "$target" || sudo test -L "$target"; then
+        sudo mv "$target" "$replaced_dir/$key-disabled"
+    fi
+    if [[ "$state" == present && -e "$state_dir/$key" ]]; then
+        sudo install -d -m 755 "$(dirname "$target")"
+        sudo cp -a "$state_dir/$key" "$target"
+    fi
+}
+
 omarchy plugin validate "$repo_dir/config/omarchy/plugins/tenebris.menu"
+omarchy plugin validate "$repo_dir/config/omarchy/plugins/tenebris.lock"
 deploy_tree "$repo_dir/config/quickshell/tenebris-shell" "$shell_dir" shell
-deploy_tree "$repo_dir/config/omarchy/themes/tenebris" "$theme_dir" theme
+
+theme_stage="$(mktemp -d)"
+cp -a "$repo_dir/config/omarchy/themes/tenebris/." "$theme_stage/"
+mkdir -p "$theme_stage/backgrounds"
+install -m 644 "$repo_dir/assets/wallpapers/00-dungeon-gate.png" \
+    "$theme_stage/backgrounds/00-dungeon-gate.png"
+install -m 644 "$repo_dir/assets/wallpapers/01-cathedral-vault.png" \
+    "$theme_stage/backgrounds/01-cathedral-vault.png"
+install -m 644 "$repo_dir/assets/wallpapers/00-dungeon-gate.png" \
+    "$theme_stage/unlock.png"
+deploy_tree "$theme_stage" "$theme_dir" theme
+rm -r -- "$theme_stage"
+
 deploy_tree "$repo_dir/config/omarchy/plugins/tenebris.menu" "$menu_plugin_dir" menu-plugin
+deploy_tree "$repo_dir/config/omarchy/plugins/tenebris.lock" "$lock_plugin_dir" lock-plugin
+deploy_file "$repo_dir/config/quickshell/tenebris-shell/dashboard-art.txt" \
+    "$screensaver_branding_file" screensaver-branding
+
+if [[ "$want_sddm_theme" == true ]]; then
+    printf 'Installing the TENEBRIS SDDM login theme (administrator access required)...\n'
+    record_system_path sddm-theme "$sddm_theme_dir"
+    record_system_path sddm-theme-config "$sddm_theme_config"
+    record_system_path sddm-autologin "$sddm_autologin_config"
+
+    sddm_stage="$(mktemp -d)"
+    cp -a "$repo_dir/config/sddm/tenebris/." "$sddm_stage/"
+    install -m 644 "$repo_dir/assets/wallpapers/00-dungeon-gate.png" \
+        "$sddm_stage/background.png"
+    install -m 644 "$repo_dir/assets/fonts/ArgFlahm.ttf" "$sddm_stage/ArgFlahm.ttf"
+    install -m 644 "$repo_dir/config/quickshell/tenebris-shell/assets/frame_corner.png" \
+        "$sddm_stage/frame_corner.png"
+    install -m 644 "$repo_dir/config/quickshell/tenebris-shell/assets/divider_ornate.png" \
+        "$sddm_stage/divider_ornate.png"
+    install -m 644 "$repo_dir/config/quickshell/tenebris-shell/assets/large_sigil.png" \
+        "$sddm_stage/large_sigil.png"
+    deploy_system_tree "$sddm_stage" "$sddm_theme_dir" sddm-theme-current
+    deploy_system_file "$repo_dir/config/sddm/zz-tenebris-theme.conf" \
+        "$sddm_theme_config" sddm-theme-config-current
+    rm -r -- "$sddm_stage"
+    touch "$active_state/managed-sddm-theme"
+
+    if [[ "$disable_sddm_autologin" == true ]]; then
+        deploy_system_file "$repo_dir/config/sddm/zz-tenebris-autologin.conf" \
+            "$sddm_autologin_config" sddm-autologin-current
+        touch "$active_state/managed-sddm-autologin"
+    elif [[ -f "$active_state/managed-sddm-autologin" ]]; then
+        restore_system_path_now sddm-autologin "$sddm_autologin_config"
+        rm -f "$active_state/managed-sddm-autologin"
+    fi
+elif [[ -f "$active_state/managed-sddm-theme" ]]; then
+    printf 'Restoring the previous SDDM login theme (administrator access required)...\n'
+    restore_system_path_now sddm-autologin "$sddm_autologin_config"
+    restore_system_path_now sddm-theme-config "$sddm_theme_config"
+    restore_system_path_now sddm-theme "$sddm_theme_dir"
+    rm -f "$active_state/managed-sddm-theme" "$active_state/managed-sddm-autologin"
+fi
 
 if [[ -n "$settings_cache" ]]; then
     cp -a "$settings_cache" "$shell_dir/settings.json"
@@ -659,6 +848,11 @@ if [[ "$previous_menu" != tenebris.menu ]]; then
     omarchy plugin disable "$previous_menu" >/dev/null 2>&1 || true
 fi
 omarchy plugin enable tenebris.menu >/dev/null
+previous_lock="$(cat "$active_state/previous-lock" 2>/dev/null || printf omarchy.lock)"
+if [[ "$previous_lock" != tenebris.lock && "$previous_lock" != omarchy.lock ]]; then
+    omarchy plugin disable "$previous_lock" >/dev/null 2>&1 || true
+fi
+omarchy plugin enable tenebris.lock >/dev/null
 omarchy restart shell
 
 if [[ -f "$HOME/.config/obsidian/obsidian.json" ]]; then
@@ -675,7 +869,7 @@ if [[ -f "$HOME/.config/obsidian/obsidian.json" ]]; then
     done < <(jq -r '.vaults | values[].path' "$HOME/.config/obsidian/obsidian.json" 2>/dev/null)
 fi
 
-omarchy theme bg set "$theme_dir/backgrounds/0-monastic-scriptorium.png"
+omarchy theme bg set "$theme_dir/backgrounds/00-dungeon-gate.png"
 
 hyprctl reload
 config_errors="$(hyprctl configerrors)"

@@ -48,11 +48,16 @@ retired_dir="$state_root/retired/$stamp"
 shell_dir="$HOME/.config/quickshell/tenebris-shell"
 theme_dir="$HOME/.config/omarchy/themes/tenebris"
 menu_plugin_dir="$HOME/.config/omarchy/plugins/tenebris.menu"
+lock_plugin_dir="$HOME/.config/omarchy/plugins/tenebris.lock"
 cliamp_theme_file="$HOME/.config/cliamp/themes/tenebris.toml"
 ymc_unit_file="$HOME/.config/systemd/user/tenebris-ymc.service"
 cliamp_unit_file="$HOME/.config/systemd/user/tenebris-cliamp.service"
+screensaver_branding_file="$HOME/.config/omarchy/branding/screensaver.txt"
 bar_off_file="$HOME/.local/state/omarchy/toggles/bar-off"
 title_font_file="$HOME/.local/share/fonts/tenebris/ArgFlahm.ttf"
+sddm_theme_dir="/usr/local/share/sddm/themes/tenebris"
+sddm_theme_config="/etc/sddm.conf.d/zz-tenebris-theme.conf"
+sddm_autologin_config="/etc/sddm.conf.d/zz-tenebris-autologin.conf"
 
 if (( EUID == 0 )); then
     printf 'Run the uninstaller as your desktop user, not as root.\n' >&2
@@ -229,13 +234,21 @@ fi
 if [[ -e "$menu_plugin_dir" ]]; then
     omarchy plugin remove tenebris.menu --yes >/dev/null 2>&1 || true
 fi
+if omarchy plugin list --json 2>/dev/null \
+        | jq -e 'any(.[]; .id == "tenebris.lock" and .enabled)' >/dev/null; then
+    omarchy plugin disable tenebris.lock >/dev/null 2>&1 || true
+fi
 
 restore_path shell "$shell_dir"
 restore_path theme "$theme_dir"
 restore_path menu-plugin "$menu_plugin_dir"
+[[ ! -f "$active_state/original/lock-plugin.state" ]] || \
+    restore_path lock-plugin "$lock_plugin_dir"
 restore_path cliamp-theme "$cliamp_theme_file"
 restore_path ymc-unit "$ymc_unit_file"
 restore_path cliamp-unit "$cliamp_unit_file"
+[[ ! -f "$active_state/original/screensaver-branding.state" ]] || \
+    restore_path screensaver-branding "$screensaver_branding_file"
 restore_path stock-bar-state "$bar_off_file"
 restore_path title-font "$title_font_file"
 rmdir "$HOME/.local/share/fonts/tenebris" >/dev/null 2>&1 || true
@@ -257,6 +270,31 @@ previous_menu="$(cat "$active_state/previous-menu" 2>/dev/null || printf omarchy
 omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
 omarchy plugin enable "$previous_menu" >/dev/null 2>&1 || \
     omarchy plugin enable omarchy.menu >/dev/null 2>&1 || true
+previous_lock="$(cat "$active_state/previous-lock" 2>/dev/null || printf omarchy.lock)"
+omarchy plugin enable "$previous_lock" >/dev/null 2>&1 || \
+    omarchy plugin enable omarchy.lock >/dev/null 2>&1 || true
+
+restore_system_path() {
+    local key="$1" target="$2" state_dir="$active_state/system-original" state
+    [[ -f "$state_dir/$key.state" ]] || return
+    state="$(cat "$state_dir/$key.state")"
+    if sudo test -e "$target" || sudo test -L "$target"; then
+        sudo mv "$target" "$retired_dir/system-$key"
+    fi
+    if [[ "$state" == present && -e "$state_dir/$key" ]]; then
+        sudo install -d -m 755 "$(dirname "$target")"
+        sudo cp -a "$state_dir/$key" "$target"
+    fi
+}
+
+if [[ -f "$active_state/managed-sddm-theme" \
+        || -f "$active_state/managed-sddm-autologin" ]]; then
+    printf 'Restoring the previous SDDM login configuration (administrator access required)...\n'
+    sudo -v
+    restore_system_path sddm-autologin "$sddm_autologin_config"
+    restore_system_path sddm-theme-config "$sddm_theme_config"
+    restore_system_path sddm-theme "$sddm_theme_dir"
+fi
 
 obsidian_restore="$active_state/original/obsidian-themes.tsv"
 if [[ -f "$obsidian_restore" ]]; then

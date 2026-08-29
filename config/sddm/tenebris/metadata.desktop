@@ -1,0 +1,13 @@
+[SddmGreeterTheme]
+Name=TENEBRIS Dungeon Master
+Description=Gothic login gate for TENEBRIS
+Author=TENEBRIS
+Copyright=TENEBRIS contributors
+License=MIT
+Type=sddm-theme
+Version=1.0
+Website=https://github.com/executionreverted/omarchy-tenebris-dm
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=tenebris
+Theme-API=2.0
