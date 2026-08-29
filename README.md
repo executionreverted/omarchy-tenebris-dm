@@ -42,6 +42,9 @@ when needed:
 
 Most already ship with Omarchy. TENEBRIS works with the terminal selected in
 Omarchy; Foot and Alacritty receive dedicated dashboard profiles.
+`cava` drives the 16-band music sigil through PipeWire; if audio capture is
+unavailable, the dashboard falls back to its static sigil without a restart
+loop.
 
 ## Reference setup
 

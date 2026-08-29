@@ -149,6 +149,11 @@ if (( ${#missing[@]} > 0 )); then
     exit 1
 fi
 
+if ! cava -v >/dev/null 2>&1; then
+    printf 'Cava is installed but its executable could not be started.\n' >&2
+    exit 1
+fi
+
 selected_display_output=""
 selected_display_mode=""
 selected_display_scale=""

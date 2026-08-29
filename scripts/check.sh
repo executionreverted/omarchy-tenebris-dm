@@ -10,6 +10,7 @@ required_files=(
     config/quickshell/tenebris-shell/shell.qml
     config/quickshell/tenebris-shell/settings.json
     config/quickshell/tenebris-shell/FolderPickerOverlay.qml
+    config/quickshell/tenebris-shell/cava-tenebris.conf
     config/quickshell/tenebris-shell/folder-browser.py
     config/quickshell/tenebris-shell/place-dashboard-terminal.py
     config/quickshell/tenebris-shell/shaders/spiderweb.frag
@@ -54,6 +55,7 @@ python3 - "$repo_dir" <<'PY'
 from __future__ import annotations
 
 import ast
+import configparser
 import json
 import re
 import sys
@@ -63,6 +65,30 @@ from pathlib import Path
 root = Path(sys.argv[1])
 shell = root / "config/quickshell/tenebris-shell"
 plugin = root / "config/omarchy/plugins/tenebris.menu"
+
+cava = configparser.ConfigParser()
+cava.read(shell / "cava-tenebris.conf", encoding="utf-8")
+cava_contract = {
+    ("general", "bars"): "16",
+    ("input", "method"): "pipewire",
+    ("output", "method"): "raw",
+    ("output", "data_format"): "ascii",
+    ("output", "bar_delimiter"): "59",
+    ("output", "frame_delimiter"): "10",
+}
+for (section, option), expected in cava_contract.items():
+    actual = cava.get(section, option, fallback="")
+    if actual != expected:
+        raise SystemExit(
+            f"Invalid Cava contract {section}.{option}: expected {expected}, got {actual or 'missing'}"
+        )
+
+installer = (root / "install.sh").read_text(encoding="utf-8")
+for array_name in ("core_packages", "required_commands"):
+    match = re.search(rf"{array_name}=\((.*?)\)", installer, re.DOTALL)
+    entries = match.group(1).split() if match else []
+    if "cava" not in entries:
+        raise SystemExit(f"Installer array {array_name} does not include cava")
 
 for path in root.rglob("*.py"):
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

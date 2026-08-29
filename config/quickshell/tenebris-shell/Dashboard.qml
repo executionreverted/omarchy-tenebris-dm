@@ -98,7 +98,10 @@ PanelWindow {
     property real audioBand15: 0
     property real audioEnergy: 0
     property real audioPeak: 0
-    readonly property bool liveVisualizerEnabled: true
+    property bool cavaAvailable: true
+    property bool cavaHealthy: false
+    property int cavaFailureCount: 0
+    readonly property bool liveVisualizerEnabled: root.cavaAvailable
 
     readonly property var workspaceRooms: [
         { name: "TABLE", asset: "workspace_table.png" },
@@ -261,6 +264,10 @@ PanelWindow {
         }
         if (count < 8)
             return;
+        if (!root.cavaHealthy) {
+            root.cavaHealthy = true;
+            cavaStable.restart();
+        }
         const average = sum / count;
         root.audioEnergy = root.audioEnergy * 0.56 + average * 0.44;
         root.audioPeak = Math.max(peak, root.audioPeak * 0.82);
@@ -705,7 +712,19 @@ PanelWindow {
         stdout: SplitParser {
             onRead: function(line) { root.updateSpectrum(line); }
         }
-        onExited: if (root.archiveVisible && root.liveVisualizerEnabled) cavaRestart.restart()
+        onExited: {
+            cavaStable.stop();
+            root.cavaHealthy = false;
+            if (!root.archiveVisible || !root.liveVisualizerEnabled)
+                return;
+            root.cavaFailureCount += 1;
+            if (root.cavaFailureCount >= 3) {
+                root.cavaAvailable = false;
+                console.warn("TENEBRIS visualizer disabled after repeated Cava failures");
+                return;
+            }
+            cavaRestart.restart();
+        }
     }
 
     Timer {
@@ -714,10 +733,22 @@ PanelWindow {
         onTriggered: if (root.archiveVisible && root.liveVisualizerEnabled && !cavaProcess.running) cavaProcess.running = true
     }
 
+    Timer {
+        id: cavaStable
+        interval: 5000
+        onTriggered: root.cavaFailureCount = 0
+    }
+
     onArchiveVisibleChanged: {
-        if (root.archiveVisible && root.liveVisualizerEnabled && !cavaProcess.running)
-            cavaProcess.running = true;
+        if (root.archiveVisible) {
+            root.cavaAvailable = true;
+            root.cavaFailureCount = 0;
+            root.cavaHealthy = false;
+            if (!cavaProcess.running)
+                cavaProcess.running = true;
+        }
         else if (!root.archiveVisible) {
+            cavaStable.stop();
             if (cavaProcess.running)
                 cavaProcess.running = false;
             root.musicPlayerDismissRequested();
