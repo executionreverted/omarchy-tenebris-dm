@@ -73,6 +73,8 @@ PanelWindow {
     property string playerUrl: ""
     property string playerVideoId: ""
     property real playerPosition: 0
+    property real playerPositionAnchor: 0
+    property double playerPositionAnchorMs: 0
     property real playerLength: 0
     property string playerRepeat: "off"
     property bool playerCanPlayPause: false
@@ -219,11 +221,31 @@ PanelWindow {
             return;
         const bounded = Math.max(0, Math.min(1, Number(ratio)));
         const target = bounded * root.playerLength;
-        root.playerPosition = target;
+        root.syncPlayerPosition(target);
         Quickshell.execDetached([
             "python3", Quickshell.shellPath("music-player.py"), "seek", String(target),
             root.playerId
         ]);
+    }
+
+    function syncPlayerPosition(position) {
+        const numeric = Number(position);
+        const safe = Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
+        const bounded = root.playerLength > 0 ? Math.min(root.playerLength, safe) : safe;
+        root.playerPositionAnchor = bounded;
+        root.playerPositionAnchorMs = Date.now();
+        root.playerPosition = bounded;
+    }
+
+    function advancePlayerPosition() {
+        if (root.playerStatus !== "PLAYING") {
+            root.playerPosition = root.playerPositionAnchor;
+            return;
+        }
+        const elapsed = Math.max(0, (Date.now() - root.playerPositionAnchorMs) / 1000);
+        const advanced = root.playerPositionAnchor + elapsed;
+        root.playerPosition = root.playerLength > 0
+            ? Math.min(root.playerLength, advanced) : advanced;
     }
 
     function setSpectrumBand(index, value) {
@@ -661,8 +683,8 @@ PanelWindow {
                     root.playerArt = player.artUrl || "";
                     root.playerUrl = player.url || "";
                     root.playerVideoId = player.videoId || "";
-                    root.playerPosition = player.position || 0;
                     root.playerLength = player.length || 0;
+                    root.syncPlayerPosition(player.position || 0);
                     root.playerRepeat = player.repeat || "off";
                     const playerControls = player.controls || {};
                     root.playerCanPlayPause = playerControls.playPause === true;
@@ -779,6 +801,17 @@ PanelWindow {
         running: root.visible
         triggeredOnStart: true
         onTriggered: if (!statePoll.running) statePoll.running = true
+    }
+
+    Timer {
+        id: mediaProgressTimer
+        interval: 250
+        repeat: true
+        running: root.archiveVisible
+            && root.playerStatus === "PLAYING"
+            && root.playerId.length > 0
+        triggeredOnStart: true
+        onTriggered: root.advancePlayerPosition()
     }
 
     Timer {

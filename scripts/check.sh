@@ -128,6 +128,17 @@ if "config/sddm/zz-tenebris-autologin.conf" in installer:
     raise SystemExit("Installer must never deploy an SDDM autologin override")
 if re.search(r"\b(?:chpasswd|passwd)\b", installer):
     raise SystemExit("Installer must never modify a user password")
+
+dashboard = (shell / "Dashboard.qml").read_text(encoding="utf-8")
+media_progress_contract = {
+    "id: mediaProgressTimer": "local media progress timer",
+    "interval: 250": "quarter-second media progress cadence",
+    "root.syncPlayerPosition(player.position || 0)": "MPRIS position resynchronization",
+    "Date.now() - root.playerPositionAnchorMs": "elapsed local media advancement",
+}
+for needle, purpose in media_progress_contract.items():
+    if needle not in dashboard:
+        raise SystemExit(f"Dashboard is missing {purpose}: {needle}")
 array_contract = {
     "core_packages": {"cava", "curl"},
     "required_commands": {"cava", "curl", "sha256sum", "fc-scan", "fc-cache"},
