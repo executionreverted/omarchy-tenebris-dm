@@ -875,7 +875,8 @@ fi
 
 systemctl --user daemon-reload
 if [[ -f "$active_state/managed-ymc" ]] && command -v ymc >/dev/null; then
-    systemctl --user enable --now tenebris-ymc.service
+    systemctl --user enable tenebris-ymc.service
+    systemctl --user restart tenebris-ymc.service
 fi
 if [[ -f "$active_state/managed-cliamp" ]] && command -v cliamp >/dev/null; then
     systemctl --user enable --now tenebris-cliamp.service

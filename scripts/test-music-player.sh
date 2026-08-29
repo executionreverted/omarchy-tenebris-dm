@@ -81,4 +81,31 @@ grep -Fqx 'playerctl --player chromium.instance42 loop Playlist' "$log_file" || 
     exit 1
 }
 
+/usr/bin/python3 -B - "$repo_dir" <<'PY'
+import importlib.util
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+shell = root / "config/quickshell/tenebris-shell"
+engine = load("tenebris_ymc_engine", shell / "ymc-engine.py")
+bridge = load("tenebris_ymc_bridge", shell / "ymc-bridge.py")
+
+queue = [{"videoId": "one"}, {"videoId": "two"}, {"videoId": "three"}]
+assert engine.repeat_target({"repeat": "off", "queue": queue, "queuePosition": 1}) is None
+assert engine.repeat_target({"repeat": "one", "queue": queue, "queuePosition": 1}) == 1
+assert engine.repeat_target({"repeat": "all", "queue": queue, "queuePosition": 1}) == 2
+assert engine.repeat_target({"repeat": "all", "queue": queue, "queuePosition": 2}) == 0
+assert bridge.next_repeat_mode({"repeat": "off"}) == "all"
+assert bridge.next_repeat_mode({"repeat": "all"}) == "one"
+assert bridge.next_repeat_mode({"repeat": "one"}) == "off"
+PY
+
 printf 'Music control regression tests passed.\n'

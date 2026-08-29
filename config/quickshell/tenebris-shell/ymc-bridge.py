@@ -176,6 +176,29 @@ def repeat_mode(state: dict[str, Any]) -> str:
     return value if value in {"off", "all", "one"} else "off"
 
 
+def next_repeat_mode(state: dict[str, Any]) -> str:
+    modes = ("off", "all", "one")
+    current = repeat_mode(state)
+    return modes[(modes.index(current) + 1) % len(modes)]
+
+
+def apply_repeat_to_player(mode: str) -> None:
+    try:
+        subprocess.run(
+            [
+                "playerctl", "--player", "mpv", "loop",
+                "Track" if mode == "one" else "None",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def write_cached_state(state: dict[str, Any]) -> None:
     STATE_CACHE.parent.mkdir(parents=True, exist_ok=True)
     state["updatedAt"] = int(time.time())
@@ -208,6 +231,7 @@ def play_track(client: WebSocketClient, track: dict[str, Any], queue: list[dict[
     client.send_json({"type": "command", "action": {"category": "SET_QUEUE", "queue": tracks}})
     client.send_json({"type": "command", "action": {"category": "PLAY", "track": track}})
     write_state(tracks, position)
+    apply_repeat_to_player(repeat_mode(read_state()))
 
 
 def search_and_play(client: WebSocketClient, query: str) -> None:
@@ -233,11 +257,21 @@ def search_and_play(client: WebSocketClient, query: str) -> None:
 
 
 def send_command(client: WebSocketClient, category: str) -> None:
+    if category == "TOGGLE_REPEAT":
+        state = read_state()
+        state["repeat"] = next_repeat_mode(state)
+        write_cached_state(state)
+        apply_repeat_to_player(state["repeat"])
+        print(json.dumps({"ok": True, "command": category, "repeat": state["repeat"]}))
+        return
+
     if category in {"NEXT", "PREVIOUS"}:
         state = read_state()
         queue = state.get("queue", [])
         position = int(state.get("queuePosition", 0))
         target = position + (1 if category == "NEXT" else -1)
+        if isinstance(queue, list) and queue and repeat_mode(state) == "all":
+            target %= len(queue)
         if isinstance(queue, list) and 0 <= target < len(queue):
             track = queue[target]
             if isinstance(track, dict):
@@ -245,12 +279,6 @@ def send_command(client: WebSocketClient, category: str) -> None:
                 print(json.dumps({"ok": True, "command": category, "track": track}, ensure_ascii=False))
                 return
     client.send_json({"type": "command", "action": {"category": category}})
-    if category == "TOGGLE_REPEAT":
-        state = read_state()
-        modes = ("off", "all", "one")
-        current = repeat_mode(state)
-        state["repeat"] = modes[(modes.index(current) + 1) % len(modes)]
-        write_cached_state(state)
     print(json.dumps({"ok": True, "command": category}))
 
 

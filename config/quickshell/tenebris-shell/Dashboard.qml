@@ -82,6 +82,8 @@ PanelWindow {
     property bool playerCanPrevious: false
     property bool playerCanSeek: false
     property bool playerCanRepeat: false
+    property bool mediaControlPending: false
+    property string mediaPendingExpectedStatus: ""
     property string musicProvider: ""
     property bool ymcAvailable: false
     property bool cliampAvailable: false
@@ -193,10 +195,38 @@ PanelWindow {
     }
 
     function mediaControl(action) {
+        if (action === "play-pause") {
+            if (root.mediaControlPending)
+                return;
+            root.mediaControlPending = true;
+            root.mediaPendingExpectedStatus = root.playerStatus === "PLAYING"
+                ? "PAUSED" : "PLAYING";
+            root.syncPlayerPosition(root.playerPosition);
+            root.playerStatus = root.mediaPendingExpectedStatus;
+            mediaControlGuard.restart();
+        } else if (action === "repeat") {
+            const modes = ["off", "all", "one"];
+            const current = Math.max(0, modes.indexOf(root.playerRepeat));
+            root.playerRepeat = modes[(current + 1) % modes.length];
+        }
         Quickshell.execDetached([
             "python3", Quickshell.shellPath("music-player.py"), "control", action,
             root.playerId
         ]);
+    }
+
+    function applyPlayerSnapshotStatus(status) {
+        const next = String(status || "SILENT").toUpperCase();
+        if (root.mediaControlPending) {
+            if (next === root.mediaPendingExpectedStatus) {
+                root.mediaControlPending = false;
+                root.mediaPendingExpectedStatus = "";
+                mediaControlGuard.stop();
+            } else if (mediaControlGuard.running) {
+                return;
+            }
+        }
+        root.playerStatus = next;
     }
 
     function musicMetadata(kind, value) {
@@ -674,7 +704,7 @@ PanelWindow {
                     root.ymcVisible = music.ymcVisible === true;
                     root.cliampVisible = music.cliampVisible === true;
                     const player = data.player || {};
-                    root.playerStatus = player.status || "SILENT";
+                    root.applyPlayerSnapshotStatus(player.status || "SILENT");
                     root.playerArtist = player.artist || "NO CANTICLE";
                     root.playerTitle = player.title || "THE ARCHIVE RESTS";
                     root.playerAlbum = player.album || "";
@@ -812,6 +842,17 @@ PanelWindow {
             && root.playerId.length > 0
         triggeredOnStart: true
         onTriggered: root.advancePlayerPosition()
+    }
+
+    Timer {
+        id: mediaControlGuard
+        interval: 4000
+        onTriggered: {
+            root.mediaControlPending = false;
+            root.mediaPendingExpectedStatus = "";
+            if (!statePoll.running)
+                statePoll.running = true;
+        }
     }
 
     Timer {
@@ -1487,14 +1528,22 @@ PanelWindow {
                                         : (mediaMouse.containsMouse ? TenebrisTheme.bone : TenebrisTheme.silver)
                                     font.family: TenebrisTheme.monoFont
                                     font.pixelSize: 18
+                                    opacity: modelData.action === "play-pause" && root.mediaControlPending
+                                        ? 0.48 : 1.0
+
+                                    Behavior on opacity {
+                                        NumberAnimation { duration: TenebrisTheme.motionFast }
+                                    }
 
                                     MouseArea {
                                         id: mediaMouse
                                         anchors.fill: parent
                                         anchors.margins: -8
                                         enabled: root.playerId.length > 0
+                                            && !(modelData.action === "play-pause"
+                                                && root.mediaControlPending)
                                         hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                         onClicked: root.mediaControl(modelData.action)
                                     }
                                 }

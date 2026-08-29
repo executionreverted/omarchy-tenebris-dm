@@ -8,7 +8,7 @@ PartOf=graphical-session.target
 Type=simple
 Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin
 ExecCondition=/usr/bin/sh -c 'command -v ymc >/dev/null'
-ExecStart=/usr/bin/env ymc --web-only --web-host 127.0.0.1 --web-port 47831
+ExecStart=/usr/bin/python3 %h/.config/quickshell/tenebris-shell/ymc-engine.py
 Restart=on-failure
 RestartSec=2
 
