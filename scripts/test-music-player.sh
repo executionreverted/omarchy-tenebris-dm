@@ -41,4 +41,44 @@ if grep -q 'ymc-bridge.py play-index' "$log_file"; then
     exit 1
 fi
 
+: >"$log_file"
+HOME="$fake_home" PATH="$fixture_bin:/usr/bin:/bin" \
+    TENEBRIS_FAKE_COMMAND_LOG="$log_file" \
+    TENEBRIS_FAKE_PLAYERS="chromium.instance42" \
+    /usr/bin/python3 \
+    "$repo_dir/config/quickshell/tenebris-shell/music-player.py" \
+    control play-pause chromium.instance42
+grep -Fqx 'playerctl --player chromium.instance42 play-pause' "$log_file" || {
+    printf 'Browser MPRIS player did not receive play-pause.\n' >&2
+    cat "$log_file" >&2
+    exit 1
+}
+
+: >"$log_file"
+HOME="$fake_home" PATH="$fixture_bin:/usr/bin:/bin" \
+    TENEBRIS_FAKE_COMMAND_LOG="$log_file" \
+    TENEBRIS_FAKE_PLAYERS="chromium.instance42" \
+    /usr/bin/python3 \
+    "$repo_dir/config/quickshell/tenebris-shell/music-player.py" \
+    seek 42 chromium.instance42
+grep -Fqx 'playerctl --player chromium.instance42 position 42.0' "$log_file" || {
+    printf 'Browser MPRIS player did not receive seek.\n' >&2
+    cat "$log_file" >&2
+    exit 1
+}
+
+: >"$log_file"
+HOME="$fake_home" PATH="$fixture_bin:/usr/bin:/bin" \
+    TENEBRIS_FAKE_COMMAND_LOG="$log_file" \
+    TENEBRIS_FAKE_PLAYERS="chromium.instance42" \
+    TENEBRIS_FAKE_PLAYER_LOOP="None" \
+    /usr/bin/python3 \
+    "$repo_dir/config/quickshell/tenebris-shell/music-player.py" \
+    control repeat chromium.instance42
+grep -Fqx 'playerctl --player chromium.instance42 loop Playlist' "$log_file" || {
+    printf 'Browser MPRIS player did not receive repeat.\n' >&2
+    cat "$log_file" >&2
+    exit 1
+}
+
 printf 'Music control regression tests passed.\n'

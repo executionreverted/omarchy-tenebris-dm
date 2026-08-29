@@ -3,7 +3,9 @@ set -euo pipefail
 
 printf 'playerctl %s\n' "$*" >>"$TENEBRIS_FAKE_COMMAND_LOG"
 if [[ "${1:-}" == -l ]]; then
-    printf '%s\n' mpv
+    printf '%s\n' "${TENEBRIS_FAKE_PLAYERS:-mpv}"
 elif [[ "${1:-}" == --player && "${3:-}" == status ]]; then
     printf '%s\n' "${TENEBRIS_FAKE_PLAYER_STATUS:-Stopped}"
+elif [[ "${1:-}" == --player && "${3:-}" == loop && $# -eq 3 ]]; then
+    printf '%s\n' "${TENEBRIS_FAKE_PLAYER_LOOP:-None}"
 fi

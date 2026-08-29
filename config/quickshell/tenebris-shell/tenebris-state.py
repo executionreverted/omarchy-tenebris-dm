@@ -7,6 +7,7 @@ import configparser
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -235,6 +236,52 @@ def player_source(player_id: str) -> str:
     return aliases.get(base, base or "MPRIS")
 
 
+def full_player_controls() -> dict[str, bool]:
+    return {
+        "playPause": True,
+        "next": True,
+        "previous": True,
+        "seek": True,
+        "repeat": True,
+    }
+
+
+def mpris_controls(player_id: str) -> dict[str, bool]:
+    controls = {
+        "playPause": bool(player_id),
+        "next": False,
+        "previous": False,
+        "seek": False,
+        "repeat": False,
+    }
+    if not player_id or shutil.which("gdbus") is None:
+        return controls
+    properties = command([
+        "gdbus", "call", "--session",
+        "--dest", f"org.mpris.MediaPlayer2.{player_id}",
+        "--object-path", "/org/mpris/MediaPlayer2",
+        "--method", "org.freedesktop.DBus.Properties.GetAll",
+        "org.mpris.MediaPlayer2.Player",
+    ], timeout=0.8)
+    if not properties:
+        return controls
+
+    def enabled(name: str) -> bool:
+        match = re.search(rf"'{re.escape(name)}': <(true|false)>", properties)
+        return match is not None and match.group(1) == "true"
+
+    can_control = enabled("CanControl")
+    return {
+        "playPause": can_control and (enabled("CanPlay") or enabled("CanPause")),
+        "next": can_control and enabled("CanGoNext"),
+        "previous": can_control and enabled("CanGoPrevious"),
+        "seek": can_control and enabled("CanSeek"),
+        # MPRIS has no CanLoop flag. LoopStatus is optional, so its presence is
+        # the conservative signal that a source exposes repeat control.
+        "repeat": can_control and "'LoopStatus':" in properties,
+    }
+
+
 def ymc_cached_track() -> dict:
     try:
         state = json.loads(YMC_STATE_CACHE.read_text(encoding="utf-8"))
@@ -280,6 +327,7 @@ def ymc_cached_player() -> dict:
         "position": 0,
         "length": round(duration),
         "repeat": repeat if repeat in {"off", "all", "one"} else "off",
+        "controls": full_player_controls(),
     }
 
 
@@ -331,6 +379,7 @@ def cliamp_player() -> dict:
         "position": round(position),
         "length": round(duration),
         "repeat": repeat if repeat in {"off", "all", "one"} else "off",
+        "controls": full_player_controls(),
     }
 
 
@@ -575,6 +624,13 @@ player = {
     "position": 0,
     "length": 0,
     "repeat": "off",
+    "controls": {
+        "playPause": False,
+        "next": False,
+        "previous": False,
+        "seek": False,
+        "repeat": False,
+    },
 }
 if music_provider == "cliamp":
     player = cliamp_player()
@@ -646,6 +702,12 @@ else:
                 length = float(cached_track.get("duration", 0))
             except (TypeError, ValueError):
                 length = 0
+        loop_status = command(["playerctl", "--player", selected, "loop"], "None")
+        repeat = {
+            "Track": "one",
+            "Playlist": "all",
+        }.get(loop_status, "off")
+        controls = full_player_controls() if music_provider == "ymc" else mpris_controls(selected)
         player = {
             "status": status,
             "artist": artist,
@@ -658,7 +720,8 @@ else:
             "artUrl": art,
             "position": round(position),
             "length": round(length),
-            "repeat": "off",
+            "repeat": repeat,
+            "controls": controls,
         }
         if music_provider == "ymc":
             try:

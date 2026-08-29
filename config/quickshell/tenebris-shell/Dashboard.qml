@@ -75,6 +75,11 @@ PanelWindow {
     property real playerPosition: 0
     property real playerLength: 0
     property string playerRepeat: "off"
+    property bool playerCanPlayPause: false
+    property bool playerCanNext: false
+    property bool playerCanPrevious: false
+    property bool playerCanSeek: false
+    property bool playerCanRepeat: false
     property string musicProvider: ""
     property bool ymcAvailable: false
     property bool cliampAvailable: false
@@ -187,7 +192,8 @@ PanelWindow {
 
     function mediaControl(action) {
         Quickshell.execDetached([
-            "python3", Quickshell.shellPath("music-player.py"), "control", action
+            "python3", Quickshell.shellPath("music-player.py"), "control", action,
+            root.playerId
         ]);
     }
 
@@ -215,7 +221,8 @@ PanelWindow {
         const target = bounded * root.playerLength;
         root.playerPosition = target;
         Quickshell.execDetached([
-            "python3", Quickshell.shellPath("music-player.py"), "seek", String(target)
+            "python3", Quickshell.shellPath("music-player.py"), "seek", String(target),
+            root.playerId
         ]);
     }
 
@@ -657,6 +664,12 @@ PanelWindow {
                     root.playerPosition = player.position || 0;
                     root.playerLength = player.length || 0;
                     root.playerRepeat = player.repeat || "off";
+                    const playerControls = player.controls || {};
+                    root.playerCanPlayPause = playerControls.playPause === true;
+                    root.playerCanNext = playerControls.next === true;
+                    root.playerCanPrevious = playerControls.previous === true;
+                    root.playerCanSeek = playerControls.seek === true;
+                    root.playerCanRepeat = playerControls.repeat === true;
                     root.stateLoaded = true;
                     Qt.callLater(root.syncTerminalPlacement);
                 } catch (error) {
@@ -1394,7 +1407,9 @@ PanelWindow {
                             MouseArea {
                                 id: seekMouse
                                 anchors.fill: parent
-                                enabled: root.playerId.length > 0 && root.playerLength > 0
+                                enabled: root.playerId.length > 0
+                                    && root.playerLength > 0
+                                    && root.playerCanSeek
                                 hoverEnabled: true
                                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 onPositionChanged: function(mouse) {
@@ -1412,12 +1427,24 @@ PanelWindow {
                             opacity: root.playerId.length > 0 ? 1.0 : 0.28
 
                             Repeater {
-                                model: [
-                                    { glyph: "󰒮", action: "previous" },
-                                    { glyph: root.playerStatus === "PLAYING" ? "󰏤" : "󰐊", action: "play-pause" },
-                                    { glyph: "󰒭", action: "next" },
-                                    { glyph: root.playerRepeat === "one" ? "󰑘" : "󰑖", action: "repeat" }
-                                ]
+                                model: {
+                                    const actions = [];
+                                    if (root.playerCanPrevious)
+                                        actions.push({ glyph: "󰒮", action: "previous" });
+                                    if (root.playerCanPlayPause)
+                                        actions.push({
+                                            glyph: root.playerStatus === "PLAYING" ? "󰏤" : "󰐊",
+                                            action: "play-pause"
+                                        });
+                                    if (root.playerCanNext)
+                                        actions.push({ glyph: "󰒭", action: "next" });
+                                    if (root.playerCanRepeat)
+                                        actions.push({
+                                            glyph: root.playerRepeat === "one" ? "󰑘" : "󰑖",
+                                            action: "repeat"
+                                        });
+                                    return actions;
+                                }
 
                                 Text {
                                     required property var modelData

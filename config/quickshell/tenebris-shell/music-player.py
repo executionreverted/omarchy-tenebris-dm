@@ -85,6 +85,58 @@ def active_provider() -> str:
     return next((name for name in ("ymc", "cliamp") if available(name)), "")
 
 
+def mpris_players() -> list[str]:
+    return [player for player in output(["playerctl", "-l"]).splitlines() if player]
+
+
+def selected_mpris_player(preferred: str = "") -> str:
+    players = mpris_players()
+    if preferred in players:
+        return preferred
+    statuses = {
+        player: output(["playerctl", "--player", player, "status"])
+        for player in players
+    }
+    return next(
+        (player for player in players if statuses[player] == "Playing"),
+        next((player for player in players if statuses[player] == "Paused"), players[0] if players else ""),
+    )
+
+
+def provider_owns_player(provider: str, player_id: str) -> bool:
+    if not player_id:
+        return True
+    if provider == "cliamp":
+        return player_id == "cliamp"
+    if provider == "ymc":
+        return player_id == "ymc" or player_id == "mpv" or player_id.startswith("mpv.")
+    return False
+
+
+def control_mpris(action: str, preferred: str = "") -> int:
+    player = selected_mpris_player(preferred)
+    if not player:
+        return 1
+    if action == "repeat":
+        current = output(["playerctl", "--player", player, "loop"], "None")
+        desired = {
+            "None": "Playlist",
+            "Playlist": "Track",
+            "Track": "None",
+        }.get(current, "Playlist")
+        run(["playerctl", "--player", player, "loop", desired])
+        return 0
+    command = {
+        "previous": "previous",
+        "play-pause": "play-pause",
+        "next": "next",
+    }.get(action)
+    if not command:
+        return 2
+    run(["playerctl", "--player", player, command])
+    return 0
+
+
 def save_active(provider: str) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps({"active": provider}, ensure_ascii=False) + "\n"
@@ -243,10 +295,12 @@ def toggle(provider: str) -> int:
     return 0
 
 
-def control(action: str) -> int:
+def control(action: str, player_id: str = "") -> int:
     provider = active_provider()
+    if player_id and not provider_owns_player(provider, player_id):
+        return control_mpris(action, player_id)
     if not provider:
-        return 1
+        return control_mpris(action, player_id)
     if provider == "cliamp":
         if not ensure_backend(provider):
             return 1
@@ -297,8 +351,14 @@ def control(action: str) -> int:
     return 0
 
 
-def seek(seconds: float) -> int:
+def seek(seconds: float, player_id: str = "") -> int:
     provider = active_provider()
+    if player_id and not provider_owns_player(provider, player_id):
+        player = selected_mpris_player(player_id)
+        if not player:
+            return 1
+        run(["playerctl", "--player", player, "position", str(seconds)])
+        return 0
     if provider == "cliamp":
         try:
             status = json.loads(output(["cliamp", "status", "--json"], "{}"))
@@ -310,7 +370,11 @@ def seek(seconds: float) -> int:
     if provider == "ymc":
         run(["playerctl", "--player", "mpv", "position", str(seconds)])
         return 0
-    return 1
+    player = selected_mpris_player(player_id)
+    if not player:
+        return 1
+    run(["playerctl", "--player", player, "position", str(seconds)])
+    return 0
 
 
 def metadata(kind: str, value: str, url: str, artist: str, album: str, duration: float) -> int:
@@ -336,9 +400,11 @@ def main() -> int:
 
     control_parser = subparsers.add_parser("control")
     control_parser.add_argument("action", choices=("previous", "play-pause", "next", "repeat"))
+    control_parser.add_argument("player_id", nargs="?", default="")
 
     seek_parser = subparsers.add_parser("seek")
     seek_parser.add_argument("seconds", type=float)
+    seek_parser.add_argument("player_id", nargs="?", default="")
 
     metadata_parser = subparsers.add_parser("metadata")
     metadata_parser.add_argument("kind", choices=("title", "artist", "album"))
@@ -355,9 +421,9 @@ def main() -> int:
     if args.command == "toggle":
         return toggle(args.provider)
     if args.command == "control":
-        return control(args.action)
+        return control(args.action, args.player_id)
     if args.command == "seek":
-        return seek(args.seconds)
+        return seek(args.seconds, args.player_id)
     if args.command == "metadata":
         return metadata(args.kind, args.value, args.url, args.artist, args.album, args.duration)
     if args.command == "select":
