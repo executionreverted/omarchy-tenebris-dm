@@ -2,6 +2,8 @@
 
 **Turn your Omarchy into a living gothic dungeon.**
 
+![TENEBRIS Black Archive dashboard](media/tenebris-dashboard.png)
+
 TENEBRIS Dungeon Master turns Omarchy into a handcrafted dark-fantasy
 workstation. Workspace 1 becomes the **Black Archive**: a fixed terminal,
 project workbench, system vitals, media controls, ten illustrated rooms and an

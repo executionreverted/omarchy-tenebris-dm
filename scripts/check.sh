@@ -10,6 +10,7 @@ required_files=(
     assets/fonts/ArgFlahm.ttf assets/fonts/Argor.txt
     assets/wallpapers/00-dungeon-gate.png
     assets/wallpapers/01-cathedral-vault.png
+    media/tenebris-dashboard.png
     media/tenebris-preview.jpg media/tenebris-preview.mp4
     config/quickshell/tenebris-shell/shell.qml
     config/quickshell/tenebris-shell/settings.json
@@ -18,6 +19,7 @@ required_files=(
     config/quickshell/tenebris-shell/dashboard-art.txt
     config/quickshell/tenebris-shell/folder-browser.py
     config/quickshell/tenebris-shell/place-dashboard-terminal.py
+    config/quickshell/tenebris-shell/ymc-engine.py
     config/quickshell/tenebris-shell/shaders/spiderweb.frag
     config/quickshell/tenebris-shell/shaders/spiderweb.frag.qsb
     config/omarchy/themes/tenebris/colors.toml
@@ -31,6 +33,7 @@ required_files=(
     config/sddm/tenebris/metadata.desktop
     config/sddm/tenebris/theme.conf
     config/sddm/zz-tenebris-theme.conf
+    systemd/user/tenebris-ymc.service
 )
 for path in "${required_files[@]}"; do
     [[ -f "$path" ]] || { printf 'Missing required file: %s\n' "$path" >&2; exit 1; }
@@ -135,10 +138,16 @@ media_progress_contract = {
     "interval: 250": "quarter-second media progress cadence",
     "root.syncPlayerPosition(player.position || 0)": "MPRIS position resynchronization",
     "Date.now() - root.playerPositionAnchorMs": "elapsed local media advancement",
+    "id: mediaControlGuard": "asynchronous media control guard",
+    "root.mediaControlPending": "media control spam prevention",
 }
 for needle, purpose in media_progress_contract.items():
     if needle not in dashboard:
         raise SystemExit(f"Dashboard is missing {purpose}: {needle}")
+
+ymc_unit = (root / "systemd/user/tenebris-ymc.service").read_text(encoding="utf-8")
+if "ymc-engine.py" not in ymc_unit:
+    raise SystemExit("YMC service does not use the TENEBRIS repeat engine")
 array_contract = {
     "core_packages": {"cava", "curl"},
     "required_commands": {"cava", "curl", "sha256sum", "fc-scan", "fc-cache"},
