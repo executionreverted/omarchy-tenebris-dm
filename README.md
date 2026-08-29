@@ -9,7 +9,7 @@ Workspaces 2–10 stay available for normal use.
 
 [![Watch TENEBRIS in motion](media/tenebris-preview.jpg)](media/tenebris-preview.mp4)
 
-[▶ Watch the 42-second TENEBRIS showcase with desktop audio](media/tenebris-preview.mp4)
+[▶ Watch the TENEBRIS showcase with desktop audio](media/tenebris-preview.mp4)
 
 The rice also includes a custom top bar and Omarchy menu, a matching lock
 screen, wallpapers, GTK styling, terminal colors, Obsidian colors and optional
