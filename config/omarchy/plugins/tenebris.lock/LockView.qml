@@ -13,12 +13,22 @@ Item {
   property string failureMessage: ""
   property int failedAttempts: 0
   property bool inputEnabled: true
+  property bool sessionSecure: false
   property bool loadBackground: true
   property string passwordText: ""
   property bool syncingPasswordText: false
+  property bool webScreensaverEnabled: true
+  property real webDensity: 0.95
+  property real webWindStrength: 1.75
+  property real webMotionAmount: 2.0
+  property int webFps: 30
+  property real webRenderScale: 0.75
+  property int webIdleSeconds: 90
+  property int webWeaveSeconds: 30
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string assetRoot: home + "/.config/quickshell/tenebris-shell/assets"
+  readonly property string shellRoot: home + "/.config/quickshell/tenebris-shell"
   readonly property string titleFont: "Argor Flahm Scaqh"
   readonly property string bodyFont: "Noto Serif"
   readonly property bool compactLayout: width < 760 || height < 520
@@ -31,6 +41,8 @@ Item {
   signal passwordTextEdited(string password)
   signal clearFailureRequested()
   signal wakeRequested()
+  signal lockWebStarted()
+  signal lockWebDismissed()
 
   function fileUrl(path) {
     if (!path) return ""
@@ -40,6 +52,11 @@ Item {
 
   function asset(name) {
     return fileUrl(assetRoot + "/" + name)
+  }
+
+  function plainFileUrl(path) {
+    if (!path) return ""
+    return "file://" + String(path).split("/").map(encodeURIComponent).join("/")
   }
 
   function forcePasswordFocus() {
@@ -53,11 +70,53 @@ Item {
     syncingPasswordText = false
   }
 
+  function resetLockWebTimer() {
+    lockWebIdleTimer.stop()
+    if (root.inputEnabled && root.sessionSecure && root.webScreensaverEnabled
+        && !root.authenticatingPassword && !lockWeb.overlayVisible)
+      lockWebIdleTimer.restart()
+  }
+
+  function noteActivity() {
+    root.wakeRequested()
+    if (lockWeb.overlayVisible) {
+      lockWeb.scatterWeb()
+      return
+    }
+    root.resetLockWebTimer()
+    root.forcePasswordFocus()
+  }
+
   onPasswordTextChanged: syncPasswordText()
-  onInputEnabledChanged: if (inputEnabled) Qt.callLater(forcePasswordFocus)
+  onInputEnabledChanged: {
+    if (!inputEnabled) {
+      lockWebIdleTimer.stop()
+      lockWeb.resetWeb()
+      return
+    }
+    Qt.callLater(forcePasswordFocus)
+    resetLockWebTimer()
+  }
+  onSessionSecureChanged: {
+    if (!sessionSecure) {
+      lockWebIdleTimer.stop()
+      lockWeb.resetWeb()
+      return
+    }
+    resetLockWebTimer()
+  }
+  onAuthenticatingPasswordChanged: resetLockWebTimer()
+  onWebScreensaverEnabledChanged: {
+    if (!webScreensaverEnabled) lockWeb.resetWeb()
+    resetLockWebTimer()
+  }
+  onWebIdleSecondsChanged: resetLockWebTimer()
   Component.onCompleted: {
     syncPasswordText()
-    if (inputEnabled) Qt.callLater(forcePasswordFocus)
+    if (inputEnabled) {
+      Qt.callLater(forcePasswordFocus)
+      resetLockWebTimer()
+    }
   }
 
   Rectangle {
@@ -96,10 +155,9 @@ Item {
       anchors.fill: parent
       hoverEnabled: true
       onClicked: {
-        root.wakeRequested()
-        root.forcePasswordFocus()
+        root.noteActivity()
       }
-      onPositionChanged: root.wakeRequested()
+      onPositionChanged: root.noteActivity()
     }
 
     Rectangle {
@@ -246,7 +304,7 @@ Item {
 
           onTextChanged: {
             if (!root.syncingPasswordText) root.passwordTextEdited(text)
-            if (text.length > 0) root.wakeRequested()
+            if (text.length > 0) root.noteActivity()
             if (text.length > 0 && root.failureMessage.length > 0) root.clearFailureRequested()
           }
 
@@ -257,7 +315,7 @@ Item {
           }
 
           Keys.onPressed: function(event) {
-            root.wakeRequested()
+            root.noteActivity()
             if (event.key === Qt.Key_Escape || (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_U)) {
               root.passwordTextEdited("")
               event.accepted = true
@@ -300,6 +358,39 @@ Item {
         hourHandSource: root.asset("clock_hour_hand.png")
         minuteHandSource: root.asset("clock_minute_hand.png")
         bodyFont: root.bodyFont
+      }
+    }
+
+    LockWebOfSilence {
+      id: lockWeb
+      anchors.fill: parent
+      z: 100
+      webDensity: root.webDensity
+      windStrength: root.webWindStrength
+      motionAmount: root.webMotionAmount
+      renderFps: root.webFps
+      renderScale: root.webRenderScale
+      weaveSeconds: root.webWeaveSeconds
+      fragmentShaderSource: root.plainFileUrl(root.shellRoot + "/shaders/spiderweb.frag.qsb")
+      spiderSpriteSource: root.plainFileUrl(root.assetRoot + "/spider_walk_sheet.png")
+      onInteractionRequested: root.wakeRequested()
+      onDismissed: {
+        root.lockWebDismissed()
+        root.forcePasswordFocus()
+        root.resetLockWebTimer()
+      }
+    }
+  }
+
+  Timer {
+    id: lockWebIdleTimer
+    interval: Math.max(5, root.webIdleSeconds) * 1000
+    repeat: false
+    onTriggered: {
+      if (root.inputEnabled && root.sessionSecure && root.webScreensaverEnabled
+          && !root.authenticatingPassword) {
+        lockWeb.beginWeb()
+        root.lockWebStarted()
       }
     }
   }

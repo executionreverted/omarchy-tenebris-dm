@@ -34,6 +34,14 @@ Item {
   property string lastEventAt: ""
   property bool strandedLock: false
   property bool strandedLockResolved: false
+  property bool webScreensaverEnabled: true
+  property real webDensity: 0.95
+  property real webWindStrength: 1.75
+  property real webMotionAmount: 2.0
+  property int webFps: 30
+  property real webRenderScale: 0.75
+  property int webIdleSeconds: 90
+  property int webWeaveSeconds: 30
 
   readonly property bool locked: lockRequested || sessionLock.locked || sessionLock.secure
   readonly property bool authenticating: authenticatingPassword || fingerprintAuthenticating
@@ -106,6 +114,13 @@ Item {
 
   function refreshFingerprintStatus() {
     if (!fingerprintCheckProc.running) fingerprintCheckProc.running = true
+  }
+
+  function hideDesktopWeb() {
+    Quickshell.execDetached([
+      "qs", "ipc", "-p", home + "/.config/quickshell/tenebris-shell",
+      "call", "tenebris.web", "lockHandoff"
+    ])
   }
 
   function logEvent(event) {
@@ -239,6 +254,7 @@ Item {
         root.pendingSessionLock = false
         sessionLockStabilizeTimer.stop()
         pendingSessionLockTimer.stop()
+        root.hideDesktopWeb()
         root.startFingerprint()
       }
     }
@@ -276,12 +292,23 @@ Item {
         failureMessage: root.failureMessage
         failedAttempts: root.failedAttempts
         inputEnabled: root.lockRequested
+        sessionSecure: sessionLock.secure
         loadBackground: root.locked
+        webScreensaverEnabled: root.webScreensaverEnabled
+        webDensity: root.webDensity
+        webWindStrength: root.webWindStrength
+        webMotionAmount: root.webMotionAmount
+        webFps: root.webFps
+        webRenderScale: root.webRenderScale
+        webIdleSeconds: root.webIdleSeconds
+        webWeaveSeconds: root.webWeaveSeconds
         passwordText: root.enteredPassword
         onPasswordTextEdited: function(password) { root.enteredPassword = password }
         onSubmitPassword: function(password) { root.submitPassword(password) }
         onClearFailureRequested: root.failureMessage = ""
         onWakeRequested: root.runWake()
+        onLockWebStarted: root.logEvent("lock-web-started")
+        onLockWebDismissed: root.logEvent("lock-web-dismissed")
       }
 
     }
@@ -428,7 +455,8 @@ Item {
       // Only a password check in flight should hold the display up. The
       // fingerprint PAM stays armed for the whole lock, so gating on
       // `authenticating` here would keep the panel lit until unlock.
-      if (root.lockRequested && !root.authenticatingPassword) root.runBlank()
+      if (root.lockRequested && !root.authenticatingPassword
+          && !root.webScreensaverEnabled) root.runBlank()
     }
   }
 
@@ -480,6 +508,28 @@ Item {
     if (!lockRequested) return
     if (authenticatingPassword) idleBlankTimer.stop()
     else armBlankTimer()
+  }
+
+  FileView {
+    path: root.home + "/.config/quickshell/tenebris-shell/settings.json"
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      try {
+        const settings = JSON.parse(text())
+        root.webScreensaverEnabled = settings.webScreensaverEnabled !== false
+        root.webDensity = Math.max(0.20, Math.min(2.0, Number(settings.webDensity || 0.95)))
+        root.webWindStrength = Math.max(0, Math.min(3.0, Number(settings.webWindStrength || 1.75)))
+        root.webMotionAmount = Math.max(0, Math.min(3.0, Number(settings.webMotionAmount || 2.0)))
+        root.webFps = Math.max(10, Math.min(60, Number(settings.webFps || 30)))
+        root.webRenderScale = Math.max(0.50, Math.min(1.0, Number(settings.webRenderScale || 0.75)))
+        root.webIdleSeconds = Math.max(5, Math.min(300, Number(settings.webIdleSeconds || 90)))
+        root.webWeaveSeconds = Math.max(10, Math.min(180, Number(settings.webWeaveSeconds || 30)))
+      } catch (error) {
+        console.warn("TENEBRIS lock web settings parse failed:", error)
+      }
+    }
+    onFileChanged: reload()
   }
 
   FileView {

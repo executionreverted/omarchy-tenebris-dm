@@ -27,6 +27,7 @@ required_files=(
     config/omarchy/plugins/tenebris.lock/manifest.json
     config/omarchy/plugins/tenebris.lock/Service.qml
     config/omarchy/plugins/tenebris.lock/LockView.qml
+    config/omarchy/plugins/tenebris.lock/LockWebOfSilence.qml
     config/omarchy/plugins/tenebris.lock/SealClock.qml
     config/sddm/tenebris/Main.qml
     config/sddm/tenebris/SealClock.qml
@@ -144,6 +145,31 @@ media_progress_contract = {
 for needle, purpose in media_progress_contract.items():
     if needle not in dashboard:
         raise SystemExit(f"Dashboard is missing {purpose}: {needle}")
+
+web_screensaver = (shell / "SpiderWebScreensaver.qml").read_text(encoding="utf-8")
+web_lock_contract = {
+    "id: lockAtBlack": "black-frame lock handoff timer",
+    "root.previewActivation": "preview lock suppression",
+    "omarchy-shell idle status": "Omarchy idle-mode probe",
+    "exec omarchy system lock": "Omarchy lock handoff",
+    "function lockHandoff()": "secure lock cleanup handoff",
+}
+for needle, purpose in web_lock_contract.items():
+    if needle not in web_screensaver:
+        raise SystemExit(f"Web screensaver is missing {purpose}: {needle}")
+
+lock_service = (lock_plugin / "Service.qml").read_text(encoding="utf-8")
+lock_view = (lock_plugin / "LockView.qml").read_text(encoding="utf-8")
+lock_web_contract = {
+    "root.hideDesktopWeb()": "desktop-web cleanup after secure lock",
+    "webScreensaverEnabled: root.webScreensaverEnabled": "shared web settings",
+    "id: lockWebIdleTimer": "fresh idle period on the lock screen",
+    "LockWebOfSilence {": "lock-surface Web of Silence scene",
+    "lock-web-started": "lock-surface screensaver lifecycle signal",
+}
+for needle, purpose in lock_web_contract.items():
+    if needle not in lock_service and needle not in lock_view:
+        raise SystemExit(f"TENEBRIS lock is missing {purpose}: {needle}")
 
 ymc_unit = (root / "systemd/user/tenebris-ymc.service").read_text(encoding="utf-8")
 if "ymc-engine.py" not in ymc_unit:

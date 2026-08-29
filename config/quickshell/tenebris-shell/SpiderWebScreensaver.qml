@@ -24,6 +24,8 @@ PanelWindow {
     property bool acceptingInput: false
     property bool weaving: false
     property bool scattering: false
+    property bool previewActivation: false
+    property bool lockProbeIssued: false
     property real weavePhase: 0
     property real scatterElapsed: 0
     property real centerOffsetX: 0
@@ -136,6 +138,9 @@ PanelWindow {
         if (!root.webEnabled && !forcePreview)
             return;
 
+        lockAtBlack.stop();
+        root.previewActivation = forcePreview === true;
+        root.lockProbeIssued = false;
         root.activationSeed = Math.random() * 8192 + (Date.now() % 100003) * 0.013;
         root.centerOffsetX = (Math.random() * 2 - 1) * 0.055;
         root.centerOffsetY = (Math.random() * 2 - 1) * 0.022;
@@ -161,6 +166,7 @@ PanelWindow {
         if (!root.overlayVisible || root.scattering)
             return;
 
+        lockAtBlack.stop();
         root.weaving = false;
         root.scattering = true;
         root.scatterElapsed = 0;
@@ -173,6 +179,7 @@ PanelWindow {
     }
 
     function finishScatter() {
+        lockAtBlack.stop();
         root.overlayVisible = false;
         root.weaving = false;
         root.scattering = false;
@@ -180,6 +187,15 @@ PanelWindow {
         root.fractureProgress = 0;
         root.effectOpacity = 1;
         root.scatterElapsed = 0;
+        root.previewActivation = false;
+        root.lockProbeIssued = false;
+    }
+
+    function requestLockAtBlack() {
+        if (root.previewActivation || root.lockProbeIssued || root.scattering)
+            return;
+        root.lockProbeIssued = true;
+        lockAtBlack.restart();
     }
 
     onWebEnabledChanged: {
@@ -224,7 +240,8 @@ PanelWindow {
         interval: Math.max(16, Math.round(1000 / Math.max(1, root.renderFps)))
         repeat: true
         running: root.overlayVisible && (root.weaving || root.scattering
-            || (root.windStrength > 0 && root.motionAmount > 0))
+            || (root.buildProgress < 1
+                && root.windStrength > 0 && root.motionAmount > 0))
         onTriggered: {
             const delta = interval / 1000;
             root.elapsedTime += delta;
@@ -232,8 +249,10 @@ PanelWindow {
             if (root.weaving) {
                 root.weavePhase = Math.min(1, root.weavePhase + delta / Math.max(1, root.weaveSeconds));
                 root.buildProgress = root.weavePhase;
-                if (root.weavePhase >= 1)
+                if (root.weavePhase >= 1) {
                     root.weaving = false;
+                    root.requestLockAtBlack();
+                }
             }
 
             if (root.scattering) {
@@ -247,8 +266,42 @@ PanelWindow {
         }
     }
 
+    Timer {
+        id: lockAtBlack
+        interval: 180
+        repeat: false
+        onTriggered: {
+            if (!root.overlayVisible || root.scattering || root.previewActivation
+                    || root.buildProgress < 1)
+                return;
+            omarchyLockProbe.running = true;
+        }
+    }
+
+    Process {
+        id: omarchyLockProbe
+        command: [
+            "bash", "-lc",
+            "omarchy-shell idle status 2>/dev/null | jq -e '.enabled == true' >/dev/null || exit 0; [[ $(omarchy-shell lock isLocked 2>/dev/null) == true ]] && exit 0; exec omarchy system lock"
+        ]
+    }
+
     IpcHandler {
         target: "tenebris.web"
+
+        function debugState(): string {
+            return JSON.stringify({
+                visible: root.overlayVisible,
+                weaving: root.weaving,
+                scattering: root.scattering,
+                build: root.buildProgress
+            });
+        }
+
+        function lockHandoff(): string {
+            root.finishScatter();
+            return "hidden";
+        }
 
         function preview(): string {
             root.beginWeb(true);
@@ -276,6 +329,7 @@ PanelWindow {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.AllButtons
+            cursorShape: Qt.BlankCursor
             property real originX: 0
             property real originY: 0
             property bool originReady: false
