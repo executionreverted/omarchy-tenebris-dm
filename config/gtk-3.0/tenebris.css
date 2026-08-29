@@ -1,0 +1,47 @@
+/* TENEBRIS GTK3 fallback for legacy native applications. */
+@define-color theme_bg_color #090909;
+@define-color theme_fg_color #d5d0c6;
+@define-color theme_base_color #0d0d0d;
+@define-color theme_text_color #d5d0c6;
+@define-color theme_selected_bg_color #7c0e13;
+@define-color theme_selected_fg_color #ede7dc;
+@define-color insensitive_bg_color #101010;
+@define-color insensitive_fg_color #77736d;
+@define-color borders rgba(102, 98, 91, 0.62);
+
+window,
+.background {
+  background-color: @theme_bg_color;
+  color: @theme_fg_color;
+}
+
+headerbar,
+.titlebar {
+  background-image: linear-gradient(to bottom, #0b0b0b, #050505);
+  border-bottom: 1px solid rgba(102, 98, 91, 0.55);
+  box-shadow: none;
+}
+
+button,
+entry,
+popover,
+menu,
+.menu {
+  border-radius: 2px;
+}
+
+row:selected,
+treeview.view:selected {
+  background-color: #261012;
+  color: #e1dbcf;
+  border-left: 2px solid #b51d24;
+}
+
+scrollbar slider {
+  background-color: rgba(102, 98, 91, 0.55);
+  border-radius: 1px;
+}
+
+scrollbar slider:hover {
+  background-color: rgba(181, 29, 36, 0.72);
+}

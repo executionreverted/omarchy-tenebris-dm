@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'python3 %s\n' "$*" >>"$TENEBRIS_FAKE_COMMAND_LOG"

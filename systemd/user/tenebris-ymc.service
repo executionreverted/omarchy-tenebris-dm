@@ -1,0 +1,16 @@
+[Unit]
+Description=TENEBRIS persistent YouTube Music engine
+After=graphical-session.target network-online.target
+Wants=network-online.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin
+ExecCondition=/usr/bin/sh -c 'command -v ymc >/dev/null'
+ExecStart=/usr/bin/env ymc --web-only --web-host 127.0.0.1 --web-port 47831
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == version && -n "${TENEBRIS_FAKE_OMARCHY_VERSION:-}" ]]; then
+    printf '%s\n' "$TENEBRIS_FAKE_OMARCHY_VERSION"
+    exit 0
+fi
+
+exit 90

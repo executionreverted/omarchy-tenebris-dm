@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "tenebris.menu",
+  "name": "TENEBRIS Omarchy Menu",
+  "version": "1.0.0",
+  "author": "executionreverted",
+  "description": "Handcrafted gothic presentation for the Omarchy command menu",
+  "kinds": [
+    "menu",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "menu": "Menu.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "TENEBRIS Menu",
+    "description": "Launches the Omarchy menu",
+    "category": "Compositor",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.menu"
+  }
+}

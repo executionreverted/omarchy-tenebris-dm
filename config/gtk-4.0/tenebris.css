@@ -1,0 +1,87 @@
+/* TENEBRIS GTK4 / libadwaita palette. Keep selectors deliberately broad so
+ * Files, dialogs and other native utilities share the same archive language. */
+@define-color window_bg_color #090909;
+@define-color window_fg_color #d5d0c6;
+@define-color view_bg_color #0d0d0d;
+@define-color view_fg_color #d5d0c6;
+@define-color headerbar_bg_color #050505;
+@define-color headerbar_fg_color #d5d0c6;
+@define-color sidebar_bg_color #0b0b0b;
+@define-color sidebar_fg_color #b8b2a7;
+@define-color secondary_sidebar_bg_color #0d0d0d;
+@define-color card_bg_color #101010;
+@define-color card_fg_color #d5d0c6;
+@define-color popover_bg_color #101010;
+@define-color popover_fg_color #d5d0c6;
+@define-color dialog_bg_color #090909;
+@define-color dialog_fg_color #d5d0c6;
+@define-color accent_bg_color #7c0e13;
+@define-color accent_fg_color #ede7dc;
+@define-color accent_color #d52a32;
+@define-color destructive_bg_color #b51d24;
+@define-color destructive_fg_color #ede7dc;
+@define-color borders rgba(102, 98, 91, 0.58);
+
+window.background,
+window.background > contents {
+  background-color: @window_bg_color;
+  color: @window_fg_color;
+}
+
+headerbar {
+  background: linear-gradient(to bottom, #0b0b0b, #050505);
+  border-bottom: 1px solid rgba(102, 98, 91, 0.55);
+  box-shadow: none;
+}
+
+headerbar button,
+button,
+entry,
+searchentry,
+popover > contents,
+.card {
+  border-radius: 2px;
+}
+
+navigation-sidebar,
+.navigation-sidebar {
+  background-color: rgba(9, 9, 9, 0.96);
+  border-right: 1px solid rgba(102, 98, 91, 0.42);
+}
+
+navigation-sidebar row,
+.navigation-sidebar row {
+  border-radius: 1px;
+  margin: 1px 5px;
+}
+
+navigation-sidebar row:selected,
+.navigation-sidebar row:selected {
+  background-color: #261012;
+  color: #e1dbcf;
+  box-shadow: inset 2px 0 #b51d24;
+}
+
+gridview child:selected,
+columnview row:selected,
+listview row:selected {
+  background-color: #261012;
+  color: #e1dbcf;
+  outline: 1px solid rgba(181, 29, 36, 0.72);
+  outline-offset: -1px;
+}
+
+separator {
+  background-color: rgba(102, 98, 91, 0.42);
+  min-width: 1px;
+  min-height: 1px;
+}
+
+scrollbar slider {
+  background-color: rgba(102, 98, 91, 0.55);
+  border-radius: 1px;
+}
+
+scrollbar slider:hover {
+  background-color: rgba(181, 29, 36, 0.72);
+}

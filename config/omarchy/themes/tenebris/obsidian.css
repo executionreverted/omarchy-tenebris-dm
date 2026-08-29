@@ -1,0 +1,133 @@
+/* TENEBRIS — Obsidian edition. Omarchy installs this as the Omarchy theme. */
+.theme-dark,
+.theme-light {
+  --background-primary: #090909;
+  --background-primary-alt: #0d0d0d;
+  --background-secondary: #050505;
+  --background-secondary-alt: #101010;
+  --background-modifier-border: #34322f;
+  --background-modifier-border-hover: #66625b;
+  --background-modifier-hover: #171717;
+  --background-modifier-active-hover: #261012;
+  --background-modifier-form-field: #0d0d0d;
+  --background-modifier-form-field-highlighted: #171717;
+  --background-modifier-success: #687062;
+  --background-modifier-error: #b51d24;
+  --background-modifier-error-hover: #d52a32;
+  --background-modifier-cover: rgba(2, 2, 2, 0.82);
+
+  --text-normal: #d5d0c6;
+  --text-muted: #8a867f;
+  --text-faint: #66625b;
+  --text-on-accent: #ede7dc;
+  --text-selection: rgba(124, 14, 19, 0.46);
+  --text-accent: #b51d24;
+  --text-accent-hover: #d52a32;
+  --text-error: #d52a32;
+  --text-success: #80897a;
+
+  --interactive-normal: #101010;
+  --interactive-hover: #171717;
+  --interactive-accent: #7c0e13;
+  --interactive-accent-hover: #b51d24;
+  --interactive-accent-hsl: 357, 80%, 27%;
+
+  --titlebar-background: #050505;
+  --titlebar-background-focused: #090909;
+  --tab-container-background: #050505;
+  --tab-outline-color: #34322f;
+  --icon-color: #8a867f;
+  --icon-color-hover: #e1dbcf;
+  --icon-color-active: #b51d24;
+
+  --font-interface-theme: "JetBrainsMono Nerd Font", "DejaVu Sans Mono", monospace;
+  --font-text-theme: "Noto Serif", serif;
+  --font-monospace-theme: "JetBrainsMono Nerd Font", monospace;
+  --radius-s: 1px;
+  --radius-m: 2px;
+  --radius-l: 2px;
+}
+
+.workspace,
+.workspace-tabs,
+.workspace-leaf-content {
+  background-color: var(--background-primary);
+}
+
+.workspace-ribbon,
+.workspace-sidedock-vault-profile {
+  background-color: #050505;
+  border-color: #34322f;
+}
+
+.workspace-tab-header-container {
+  border-bottom: 1px solid #34322f;
+}
+
+.workspace-tab-header.is-active {
+  color: #e1dbcf;
+  box-shadow: inset 0 -2px #7c0e13;
+}
+
+.nav-file-title,
+.nav-folder-title {
+  border-radius: 1px;
+}
+
+.nav-file-title.is-active,
+.nav-folder-title.is-active {
+  color: #e1dbcf;
+  background: #261012;
+  box-shadow: inset 2px 0 #b51d24;
+}
+
+.markdown-rendered h1,
+.markdown-rendered h2,
+.markdown-rendered h3,
+.cm-header-1,
+.cm-header-2,
+.cm-header-3 {
+  color: #e1dbcf;
+  font-family: "Noto Serif Display", "Noto Serif", serif;
+  letter-spacing: 0.035em;
+}
+
+.markdown-rendered h1,
+.cm-header-1 {
+  border-bottom: 1px solid #7c0e13;
+}
+
+.markdown-rendered blockquote {
+  background: rgba(23, 23, 23, 0.72);
+  border-left: 2px solid #7c0e13;
+}
+
+.markdown-rendered code,
+.cm-inline-code,
+pre code {
+  color: #b8b2a7;
+  background: #050505;
+  border: 1px solid #34322f;
+  border-radius: 1px;
+}
+
+.cm-s-obsidian span.cm-keyword { color: #91737b; }
+.cm-s-obsidian span.cm-string { color: #80897a; }
+.cm-s-obsidian span.cm-number { color: #a48a6b; }
+.cm-s-obsidian span.cm-comment { color: #66625b; font-style: italic; }
+.cm-s-obsidian span.cm-operator { color: #92959d; }
+.cm-s-obsidian span.cm-def { color: #747780; }
+
+.graph-view.color-line { color: #34322f; }
+.graph-view.color-fill { color: #7c0e13; }
+.graph-view.color-fill-highlight { color: #b51d24; }
+.graph-view.color-text { color: #d5d0c6; }
+
+::-webkit-scrollbar-thumb {
+  background: #34322f;
+  border-radius: 1px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7c0e13;
+}

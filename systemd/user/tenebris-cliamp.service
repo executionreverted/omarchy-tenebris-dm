@@ -1,0 +1,20 @@
+[Unit]
+Description=TENEBRIS persistent cliamp engine
+After=graphical-session.target network-online.target
+Wants=network-online.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin
+ExecCondition=/usr/bin/sh -c 'command -v cliamp >/dev/null'
+ExecStartPre=-/usr/bin/tmux -L tenebris-cliamp kill-server
+ExecStart=/usr/bin/tmux -L tenebris-cliamp new-session -d -s player -x 136 -y 46 /usr/bin/env cliamp --start-theme tenebris --visualizer Mirror
+ExecStart=/usr/bin/tmux -L tenebris-cliamp set-option -t player status off
+ExecStart=/usr/bin/tmux -L tenebris-cliamp bind-key -T root q detach-client
+ExecStart=/usr/bin/tmux -L tenebris-cliamp bind-key -T root C-q send-keys q
+ExecStop=-/usr/bin/tmux -L tenebris-cliamp kill-server
+
+[Install]
+WantedBy=default.target

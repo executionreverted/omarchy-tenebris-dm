@@ -1,0 +1,20 @@
+module Tenebris
+singleton TenebrisTheme 1.0 TenebrisTheme.qml
+TenebrisBar 1.0 TenebrisBar.qml
+TenebrisUtilityButton 1.0 TenebrisUtilityButton.qml
+Dashboard 1.0 Dashboard.qml
+SpiderWebScreensaver 1.0 SpiderWebScreensaver.qml
+WebSettingsMenu 1.0 WebSettingsMenu.qml
+WebSettingsOverlay 1.0 WebSettingsOverlay.qml
+FolderPickerOverlay 1.0 FolderPickerOverlay.qml
+TerminalFrameOverlay 1.0 TerminalFrameOverlay.qml
+SigilVisualizer 1.0 SigilVisualizer.qml
+ArchiveFrame 1.0 ArchiveFrame.qml
+ArchiveButton 1.0 ArchiveButton.qml
+ArchiveRail 1.0 ArchiveRail.qml
+RasterIconButton 1.0 RasterIconButton.qml
+AsciiSigil 1.0 AsciiSigil.qml
+WorkbenchAction 1.0 WorkbenchAction.qml
+MetricBar 1.0 MetricBar.qml
+OrnamentDivider 1.0 OrnamentDivider.qml
+YmcPlayerOverlay 1.0 YmcPlayerOverlay.qml

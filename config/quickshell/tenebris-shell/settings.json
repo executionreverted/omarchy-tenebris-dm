@@ -1,0 +1,14 @@
+{
+  "cleanMode": false,
+  "dashboardWorkspace": 1,
+  "projectRoot": "~/Projects",
+  "projectSort": "modified-desc",
+  "webScreensaverEnabled": true,
+  "webDensity": 0.95,
+  "webWindStrength": 1.75,
+  "webMotionAmount": 2,
+  "webFps": 30,
+  "webRenderScale": 0.75,
+  "webIdleSeconds": 90,
+  "webWeaveSeconds": 30
+}

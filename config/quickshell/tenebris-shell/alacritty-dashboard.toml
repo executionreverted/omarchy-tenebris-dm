@@ -1,0 +1,9 @@
+[general]
+import = ["~/.config/alacritty/alacritty.toml"]
+
+[window]
+padding = { x = 8, y = 0 }
+opacity = 0.72
+dynamic_padding = false
+decorations = "None"
+resize_increments = false

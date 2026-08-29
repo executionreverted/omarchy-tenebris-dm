@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'systemctl %s\n' "$*" >>"$TENEBRIS_FAKE_COMMAND_LOG"
+if [[ "$*" == *'is-active tenebris-ymc.service'* ]]; then
+    printf '%s\n' active
+fi
