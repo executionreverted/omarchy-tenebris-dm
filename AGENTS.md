@@ -1,8 +1,8 @@
 # AGENTS.md
 
-This repository is the publishable source of truth for TENEBRIS, an Omarchy
-Quattro (4.x) desktop rice. Keep it installable on a clean Omarchy user account
-and keep the public repository free of machine-specific data.
+This repository is the publishable source of truth for TENEBRIS Dungeon Master,
+an Omarchy Quattro (4.x) desktop rice. Keep it installable on a clean Omarchy
+user account and keep the public repository free of machine-specific data.
 
 ## Repository map
 
@@ -36,8 +36,8 @@ they are deployed copies.
 The normal user install is:
 
 ```bash
-git clone https://github.com/executionreverted/tenebris-omarchy.git
-cd tenebris-omarchy
+git clone https://github.com/executionreverted/omarchy-tenebris-dm.git
+cd omarchy-tenebris-dm
 ./install.sh
 ```
 

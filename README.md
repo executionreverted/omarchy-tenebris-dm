@@ -1,11 +1,11 @@
-# TENEBRIS
+# TENEBRIS Dungeon Master
 
-**Turn your Omarchy into a living gothic workstation.**
+**Turn your Omarchy into a living gothic dungeon.**
 
-TENEBRIS turns Omarchy into a handcrafted dark-fantasy workstation. Workspace
-1 becomes the **Black Archive**: a fixed terminal, project workbench, system
-vitals, media controls, ten illustrated rooms and an idle spider-web scene.
-Workspaces 2–10 stay available for normal use.
+TENEBRIS Dungeon Master turns Omarchy into a handcrafted dark-fantasy
+workstation. Workspace 1 becomes the **Black Archive**: a fixed terminal,
+project workbench, system vitals, media controls, ten illustrated rooms and an
+idle spider-web scene. Workspaces 2–10 stay available for normal use.
 
 [![Watch TENEBRIS in motion](media/tenebris-preview.jpg)](media/tenebris-preview.mp4)
 
@@ -61,8 +61,8 @@ and preserves the existing monitor mode by default.
 ## Install
 
 ```bash
-git clone https://github.com/executionreverted/tenebris-omarchy.git
-cd tenebris-omarchy
+git clone https://github.com/executionreverted/omarchy-tenebris-dm.git
+cd omarchy-tenebris-dm
 ./install.sh
 ```
 
