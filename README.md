@@ -16,6 +16,12 @@ screen, wallpapers, GTK styling, terminal colors, Obsidian colors and optional
 music integrations. Hardware settings are left untouched unless a display
 profile is explicitly selected during installation.
 
+> [!WARNING]
+> **TENEBRIS is experimental.** The installer backs up every user configuration
+> file it replaces and `./uninstall.sh` can restore the previous desktop state.
+> Even so, keep your own backup of `~/.config` and any important personal files
+> before installing, just in case.
+
 ## Requirements
 
 - Omarchy Quattro (4.x); other Omarchy generations are rejected before any
