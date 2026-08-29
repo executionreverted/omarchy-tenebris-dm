@@ -186,6 +186,50 @@ The shipped **Web of Silence** profile uses density `0.95`, wind `1.75`,
 motion `2.0`, 30 FPS at `0.75×` render scale, a 90-second idle delay and a
 30-second weave. Existing settings remain untouched when TENEBRIS is updated.
 
+## Useful commands
+
+TENEBRIS QML usually hot-reloads after a deployed file is saved. Use these
+commands when a component needs a clean restart:
+
+```bash
+# Reload Hyprland, then show any configuration errors
+hyprctl reload
+hyprctl configerrors
+
+# Restart the Omarchy top bar, menu and lock provider
+omarchy restart shell
+
+# Restart only the TENEBRIS dashboard
+qs kill -p "$HOME/.config/quickshell/tenebris-shell"
+qs -p "$HOME/.config/quickshell/tenebris-shell" -d
+
+# Reload supported terminal emulator configuration
+omarchy restart terminal
+```
+
+Inspect the dashboard or test Web of Silence without waiting for the idle
+timer:
+
+```bash
+qs list --all
+qs log -p "$HOME/.config/quickshell/tenebris-shell" -f
+
+qs ipc -p "$HOME/.config/quickshell/tenebris-shell" call tenebris.web preview
+qs ipc -p "$HOME/.config/quickshell/tenebris-shell" call tenebris.web scatter
+```
+
+Repository files are the source of truth. After editing them, validate and
+redeploy without reinstalling packages:
+
+```bash
+./scripts/check.sh
+./install.sh --skip-packages
+```
+
+`omarchy refresh shell` is a reset command, not a reload command. It replaces
+the current shell layout with Omarchy defaults, so do not use it to restart
+TENEBRIS.
+
 ## Extend TENEBRIS
 
 Contributors can follow [Adding New Features](docs/adding-new-features.md) for
